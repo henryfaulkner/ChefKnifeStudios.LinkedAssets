@@ -1,0 +1,19 @@
+# Local agent state (project skills in .agents/skills are tracked)
+.codex/
+.agents/*.jsonl
+.agents/*.log
+
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+*.user
+*.suo
+
+# IDE and build output
+.vs/
+**/bin/
+**/obj/
+node_modules/
+__pycache__/
+*.pyc
