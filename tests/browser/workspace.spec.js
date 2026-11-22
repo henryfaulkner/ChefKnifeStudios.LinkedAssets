@@ -15,7 +15,8 @@ for(const filter of ['type','search']){
         parents:cy.nodes(':parent').filter(n=>n.visible()).length,
         nodes:cy.nodes(':childless').filter(n=>n.visible()).length,
         edges:cy.edges().filter(e=>e.visible()).length,
-        positions:cy.nodes(':childless').map(n=>({id:n.id(),position:{...n.position()}}))
+        // Packing translations can differ by IEEE-754 rounding across platforms.
+        positions:cy.nodes(':childless').map(n=>({id:n.id(),position:{x:Number(n.position('x').toFixed(6)),y:Number(n.position('y').toFixed(6))}}))
       };
     });
     await expect.poll(()=>graphState().then(s=>s.edges)).toBe(5);

@@ -52,12 +52,18 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium firefox
+      - name: Verify WebGL on the Linux virtual display
+        working-directory: tests/browser
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: xvfb-run --auto-servernum node check-webgl.mjs
       - name: Verify the published app in two engines
         working-directory: tests/browser
         env:
           LA_STATIC_HOST: '1'
           LA_START_STATIC_HOST: '1'
-        run: npx playwright test --grep-invert 'stress fixture|scale node|published WASM app filters'
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: xvfb-run --auto-servernum npx playwright test --headed --grep-invert 'stress fixture|scale node|published WASM app filters'
       - uses: actions/upload-artifact@v4
         with:
           name: linked-assets-client-${{ github.sha }}
