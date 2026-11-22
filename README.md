@@ -96,11 +96,11 @@ The scale set has 500 independent links, 2,000 visual nodes and 5,995 pairwise s
 
 ## Maps and static delivery
 
-Development map styles may be supplied in WebApp `wwwroot/appsettings.json`. Publishing takes public browser style URLs from `LINKED_ASSETS_MAP_LIGHT_STYLE_URL` and `LINKED_ASSETS_MAP_DARK_STYLE_URL` and writes the published configuration. Use a separate provider browser key restricted to localhost/the eventual HTTPS hostname. No Geotab credentials belong in this configuration. Without map styles, details still show report times and an explicit map-configuration message.
+Development map styles may be supplied in WebApp `wwwroot/appsettings.json`. Publishing takes public browser style URLs from `LINKED_ASSETS_MAP_LIGHT_STYLE_URL` and `LINKED_ASSETS_MAP_DARK_STYLE_URL` and writes the published configuration. The owner selected OpenFreeMap Liberty/Dark for the deployment trial on 2026-11-22; these styles require no browser key. Preserve their map attribution. If using a keyed provider later, use a separate browser key restricted to the app's origins. No Geotab credentials belong in this configuration. Without map styles, details still show report times and an explicit map-configuration message.
 
 ```powershell
-$env:LINKED_ASSETS_MAP_LIGHT_STYLE_URL = 'https://api.maptiler.com/maps/streets-v2/style.json?key=YOUR_PUBLIC_BROWSER_KEY'
-$env:LINKED_ASSETS_MAP_DARK_STYLE_URL = 'https://api.maptiler.com/maps/streets-v2-dark/style.json?key=YOUR_PUBLIC_BROWSER_KEY'
+$env:LINKED_ASSETS_MAP_LIGHT_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
+$env:LINKED_ASSETS_MAP_DARK_STYLE_URL = 'https://tiles.openfreemap.org/styles/dark'
 ./scripts/publish.ps1
 ```
 
@@ -119,6 +119,14 @@ az deployment sub create --subscription $subscriptionId --name linked-assets-inf
 Review what-if before applying. Azure's response omits `buildProperties` and includes service-managed properties such as `stableInboundIP` and `trafficSplitting`, so what-if can report a modification after successful provisioning. Do not copy these read-only properties into Bicep or perform portal/CLI resource adjustments to eliminate that report.
 
 The sole workflow is `.github/workflows/client.yml`. PRs validate; main/manual runs deploy only after repository variable `LINKED_ASSETS_RELEASE_READY` is set to `true`. Leave that unset until the checklist's live and delivery prerequisites pass. It uses public style URL repository variables with the same names as the publish environment variables and secret `AZURE_STATIC_WEB_APPS_API_TOKEN_LINKED_ASSETS`, scoped to the one SWA. No secret value is stored here.
+
+For the owner-authorized hosting trial while live/product acceptance remains open, explicitly dispatch that same workflow with `deployment_trial=true`. It runs all build/test/publish checks before uploading the artifact and does not change the release-ready variable:
+
+```powershell
+gh workflow run client.yml --ref main -f deployment_trial=true --repo henryfaulkner/ChefKnifeStudios.LinkedAssets
+```
+
+The Azure host is provisioned only through Bicep; GitHub Actions uploads static application files. The scoped deployment token is read solely to configure the GitHub secret, without resetting it or changing the Azure resource. The trial does not close the live Geotab, performance or deployed acceptance objectives.
 
 Static rollback uses that same workflow's optional `artifact_run_id` to download a known-good retained client artifact. Artifacts are named by source revision and retained for 30 days. This path must still be exercised against the actual host under LA-047; no deployment/rollback is claimed by local tests.
 

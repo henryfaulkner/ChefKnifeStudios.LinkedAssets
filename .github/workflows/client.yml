@@ -5,6 +5,11 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      deployment_trial:
+        description: 'Upload for hosting validation while live/product acceptance remains open'
+        required: false
+        default: false
+        type: boolean
       artifact_run_id:
         description: 'Optional known-good workflow run ID for static rollback'
         required: false
@@ -66,7 +71,7 @@ jobs:
 
   deploy:
     needs: validate
-    if: github.event_name != 'pull_request' && vars.LINKED_ASSETS_RELEASE_READY == 'true'
+    if: github.event_name != 'pull_request' && (vars.LINKED_ASSETS_RELEASE_READY == 'true' || (github.event_name == 'workflow_dispatch' && inputs.deployment_trial))
     runs-on: ubuntu-24.04
     environment: production
     steps:

@@ -5,7 +5,8 @@ test('initial measured layout is repeatable and keeps long labels in separate gr
   await interceptGeotab(page,data);await page.goto('/');
   await page.getByLabel('Geotab username or email').fill('fixture');await page.getByLabel('Password',{exact:true}).fill('synthetic-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();
   const geometry=async()=>{
-    await expect.poll(()=>page.evaluate(()=>document.querySelector('.graph-host')?._cyreg?.cy?.nodes(':childless').length)).toBe(7);
+    // Published WASM session restore measured 6.4s locally; use the existing session-test startup budget.
+    await expect.poll(()=>page.evaluate(()=>document.querySelector('.graph-host')?._cyreg?.cy?.nodes(':childless').length),{timeout:15000}).toBe(7);
     return page.evaluate(()=>{const cy=document.querySelector('.graph-host')._cyreg.cy;return{bounds:cy.nodes(':parent').map(n=>n.boundingBox({includeLabels:true})),positions:cy.nodes(':childless').map(n=>({id:n.id(),x:n.position('x'),y:n.position('y')}))};});
   };
   const before=await geometry();

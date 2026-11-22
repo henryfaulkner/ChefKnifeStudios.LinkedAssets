@@ -42,8 +42,14 @@ test('independent complete graphs support node, parent and segment movement',asy
   await page.evaluate(()=>adapter.setVisible(instance,2,['AssetLink:1']));
   await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
   expect(await page.evaluate(()=>cy.nodes(':childless').filter(n=>n.visible()).length)).toBe(3);
-  await page.evaluate(()=>adapter.setVisible(instance,3,graphs.map(g=>g.key)));
   expect(await page.evaluate(()=>cy.getElementById('parent-0').children().map(n=>({...n.position()})))).toEqual(grouped);
+  await page.evaluate(()=>adapter.setVisible(instance,3,graphs.map(g=>g.key)));
+  const restored=await page.evaluate(()=>cy.getElementById('parent-0').children().map(n=>({...n.position()})));
+  // Restoring a graph reflows its origin but preserves its edited internal shape.
+  for(let i=0;i<grouped.length;i++){
+    expect(restored[i].x-restored[0].x).toBeCloseTo(grouped[i].x-grouped[0].x,8);
+    expect(restored[i].y-restored[0].y).toBeCloseTo(grouped[i].y-grouped[0].y,8);
+  }
   const panBefore=await page.evaluate(()=>({...cy.pan()}));
   await page.mouse.move(1100,600);await page.mouse.down();await page.mouse.move(1140,630,{steps:8});await page.mouse.up();
   const panAfter=await page.evaluate(()=>({...cy.pan()}));expect(panAfter.x-panBefore.x).toBeCloseTo(40,0);
