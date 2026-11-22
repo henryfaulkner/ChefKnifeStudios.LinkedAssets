@@ -2,6 +2,6 @@
   "name": "linked-assets-browser-tests",
   "private": true,
   "type": "module",
-  "scripts": { "test": "playwright test" },
+  "scripts": { "test": "playwright test", "preview": "node preview.mjs" },
   "devDependencies": { "@playwright/test": "1.58.2" }
 }

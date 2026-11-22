@@ -28,6 +28,21 @@ There is no production demo mode. A fresh checkout displays sign-in until actual
 
 AssetLink member history remains explicitly unverified until the target server's limits and complete history are proven under LA-005/LA-037. Those links show “Addition time unavailable” and sort after known addition dates. Missing DeviceLink types are excluded until the target's default encoding is verified. Refresh is manual; known membership boundaries also trigger reevaluation. A failed refresh retains the prior snapshot and labels it stale.
 
+## Explore locally with mock data
+
+Start the app using the Run locally command above, then open another terminal:
+
+```powershell
+cd tests/browser
+npm ci
+npx playwright install chromium
+npm run preview
+```
+
+This opens a separate Chromium window, signs in with test-only values, and displays three synthetic links: Automatic, Manual and Cold Chain. You can drag graphs, search, toggle types, sort and open details with fixture positions/report times. The preview uses OpenFreeMap street maps in light and dark themes with the actual pin renderer; internet access is required, and no map key is needed. A yellow MOCK DATA notice identifies this window. Close it or press Ctrl+C to stop.
+
+All Geotab API responses in this window are intercepted locally; no real username/password or unlocked account is needed. If you sign out, enter any nonempty username/password to sign back into the preview. Reload retains the mock session. Normal browser windows still require actual Geotab access. The fixtures and launcher remain in test tooling and are excluded from the published app. Live access verification remains open under LA-004/LA-037.
+
 ## Tests without an account
 
 ```powershell

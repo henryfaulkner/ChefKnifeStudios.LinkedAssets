@@ -141,7 +141,8 @@ export function setVisible(id,revision,keys){
     const s=command(id,revision);if(!s)return;const visible=new Set(keys);
     const hide=[],show=[];
     for(const [key,group] of s.groups){const hidden=!visible.has(key);if(Boolean(group.hidden)!==hidden)(hidden?hide:show).push(group.parent[0]);}
-    s.cy.batch(()=>{s.cy.collection(hide).style('visibility','hidden');s.cy.collection(show).style('visibility','visible');});
+    // display:none also hides descendant nodes and their edges, retaining positions.
+    s.cy.batch(()=>{s.cy.collection(hide).style('display','none');s.cy.collection(show).style('display','element');});
     for(const [key,group] of s.groups)group.hidden=!visible.has(key);
 }
 export function setSelection(id,revision,key){

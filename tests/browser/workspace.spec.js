@@ -5,6 +5,45 @@ export async function signIn(page){
   await expect(page.getByText('3 / 3 links')).toBeVisible();
 }
 async function browse(page,type){await page.getByText('Browse links',{exact:true}).click();await page.getByRole('button',{name:new RegExp(`^${type}:`)}).click();}
+
+for(const filter of ['type','search']){
+  test(`${filter} exclusions hide complete graphs and restore their saved layout`,async({page})=>{
+    const calls=await interceptGeotab(page);await signIn(page);
+    const graphState=()=>page.evaluate(()=>{
+      const cy=document.querySelector('.graph-host')._cyreg.cy;
+      return {
+        parents:cy.nodes(':parent').filter(n=>n.visible()).length,
+        nodes:cy.nodes(':childless').filter(n=>n.visible()).length,
+        edges:cy.edges().filter(e=>e.visible()).length,
+        positions:cy.nodes(':childless').map(n=>({id:n.id(),position:{...n.position()}}))
+      };
+    });
+    await expect.poll(()=>graphState().then(s=>s.edges)).toBe(5);
+    const initial=await graphState(),readCount=calls.length;
+    if(filter==='type'){
+      await page.getByRole('button',{name:'Cold Chain',exact:true}).click();
+      await expect.poll(()=>graphState().then(({parents,nodes,edges})=>({parents,nodes,edges})))
+        .toEqual({parents:2,nodes:5,edges:4});
+      await page.getByRole('button',{name:'Automatic',exact:true}).click();
+      await page.getByRole('button',{name:'Manual',exact:true}).click();
+    }else{
+      await page.getByLabel('Search devices').fill('Sensor');
+      // One matching member keeps the complete three-member Automatic graph.
+      await expect.poll(()=>graphState().then(({parents,nodes,edges})=>({parents,nodes,edges})))
+        .toEqual({parents:1,nodes:3,edges:3});
+      await page.getByLabel('Search devices').fill('no matching devices');
+    }
+    await expect.poll(()=>graphState().then(({parents,nodes,edges})=>({parents,nodes,edges})))
+      .toEqual({parents:0,nodes:0,edges:0});
+    if(filter==='type'){
+      for(const type of ['Automatic','Manual','Cold Chain'])
+        await page.getByRole('button',{name:type,exact:true}).click();
+    }else await page.getByLabel('Search devices').fill('');
+    await expect.poll(graphState).toEqual(initial);
+    expect(calls.length).toBe(readCount);
+  });
+}
+
 test('production graphs, combined filters, overlay, details, sorting and keyboard focus',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   const calls=await interceptGeotab(page);await signIn(page);

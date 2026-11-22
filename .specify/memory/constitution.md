@@ -1,10 +1,8 @@
 ﻿<!--
 Sync Impact Report (temporary review material; remove before committing)
-Version change: 1.0.2 -> 1.1.0 (Geotab data sourcing and linked-asset source requirements)
-Modified principles (titles unchanged):
-  I. Read-Only, Client-Side Operation
-  V. Independent Link Graphs
-Modified sections: none beyond principles I and V.
+Version change: 1.1.0 -> 1.1.1 (clarify complete graph visibility under filters)
+Modified principles: none.
+Modified sections: Product Behavior (device-name search and key toggles).
 Added sections: none.
 Removed sections: none.
 Follow-up TODOs: none.
@@ -180,10 +178,16 @@ when devices participate in several relationships.
 - **Device-name search:** The textbox MUST filter links as the user types, retaining only
   links with at least one member device whose name contains the input text. Matching MUST
   retain the entire link graph, including its other member devices.
+  When no member device matches, the entire link graph MUST disappear, including every
+  node, name label, connecting line segment, and group outline.
 - **Key toggles:** Every link-type label in the key MUST be a toggle that defaults to on.
   Clicking an on label MUST strike through its text and exclude links of that type.
   Clicking an off label MUST remove the strike-through and restore that type's eligibility.
   Text search and link-type filters MUST apply together.
+  Excluding a link type MUST hide every graph of that type, including all nodes, name
+  labels, connecting line segments, and group outlines. Hidden links MUST leave no orphan
+  lines on the canvas. Restoring a link's eligibility MUST restore its complete graph at
+  its saved local coordinates.
 - **Sorting:** The page MUST expose buttons that arrange visible links logically from left
   to right. Required modes MUST include Most Recent and Link Type. Most Recent MUST order
   links by their latest addition, newest first; it MUST NOT substitute device report recency.
@@ -238,4 +242,4 @@ Every specification, implementation plan, and code review MUST assess compliance
 the applicable rules. Departures from a MUST rule require an approved constitutional
 amendment; implementation convenience alone is not an exception.
 
-**Version**: 1.1.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21
+**Version**: 1.1.1 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21
