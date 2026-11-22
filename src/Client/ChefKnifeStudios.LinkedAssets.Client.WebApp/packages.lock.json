@@ -37,7 +37,7 @@
         "type": "Direct",
         "requested": "[10.0.15, )",
         "resolved": "10.0.15",
-        "contentHash": "6qsQV7ia5tolOnjsouTg9E8OLL7+k56fdh4SMoVXlTvkCe0YrHWrPo7Y8Ku01k61ihnSyvKBt1Pq3PhKgsyuIg=="
+        "contentHash": "7CKLQNBPbCtKGba+OljoWAi4awMyM5E6ORtqkW5avCfNd8beVf9zNmyha3JZT0vztXJnKgdjUOAV5tvqZvmXTQ=="
       },
       "Blazored.LocalStorage": {
         "type": "Transitive",

@@ -24,6 +24,8 @@ dotnet run --project src/Client/ChefKnifeStudios.LinkedAssets.Client.WebApp --no
 
 Open `http://localhost:5180`. Enter your Geotab username/password and, if needed, database. Passwords are cleared after each attempt. Sessions live in memory and tab `sessionStorage`; only theme preferences use `localStorage`. Storage failures retain an in-memory session/preference. Sign-out clears this app's stored session and presentation state.
 
+Restores disable the SDK's implicit local package source so the lock file uses canonical NuGet.org packages on Windows and Linux. If an existing SDK-sourced cache entry causes `NU1403`, use an isolated cache without weakening hash validation: set `$env:NUGET_PACKAGES = Join-Path (Get-Location) 'artifacts/nuget-packages'`, then rerun `dotnet restore --locked-mode` and subsequent build/publish commands in that shell.
+
 There is no production demo mode. A fresh checkout displays sign-in until actual Geotab access is supplied. Request a public demo database using the design's [acquisition guide](docs/implementation-design.md#11-test-data-acquisition-without-employee-credentials), record its actual expiry, and arrange an API user with read access to Device, AssetLink, AssetLinkDetails, DeviceLink and DeviceStatusInfo. Do not commit credentials. Sample vehicles alone do not guarantee all three link categories exist.
 
 AssetLink member history remains explicitly unverified until the target server's limits and complete history are proven under LA-005/LA-037. Those links show “Addition time unavailable” and sort after known addition dates. Missing DeviceLink types are excluded until the target's default encoding is verified. Refresh is manual; known membership boundaries also trigger reevaluation. A failed refresh retains the prior snapshot and labels it stale.
@@ -102,7 +104,19 @@ $env:LINKED_ASSETS_MAP_DARK_STYLE_URL = 'https://api.maptiler.com/maps/streets-v
 ./scripts/publish.ps1
 ```
 
-`bicep/main.bicep` defines one resource group and one Static Web App, with an empty API location and generated workflow creation disabled. It has only been built locally. No Azure resources were provisioned during local implementation.
+`bicep/main.bicep` defines one resource group and one Free Static Web App, with an empty API location and generated workflow creation disabled. On 2026-11-22, Azure validation and deployment of the unchanged template succeeded in the ChefKnifeStudios subscription. The target is `linked-assets-rg/linked-assets-swa` in `eastus2`, with hostname `white-forest-0daca9d0f.5.azurestaticapps.net`. Provisioning the host does not upload the application files or establish product acceptance; see LA-043–LA-046 in the canonical checklist.
+
+All Azure infrastructure changes must go through Bicep. Reproduce the validation and deployment with:
+
+```powershell
+$subscriptionId = 'd2f70759-7eeb-4ca5-9046-f7c8d562ef8f'
+az bicep build --file bicep/main.bicep --outfile artifacts/infra/main.json
+az deployment sub validate --subscription $subscriptionId --name linked-assets-infra --location eastus2 --template-file bicep/main.bicep
+az deployment sub what-if --subscription $subscriptionId --name linked-assets-infra --location eastus2 --template-file bicep/main.bicep
+az deployment sub create --subscription $subscriptionId --name linked-assets-infra --location eastus2 --template-file bicep/main.bicep
+```
+
+Review what-if before applying. Azure's response omits `buildProperties` and includes service-managed properties such as `stableInboundIP` and `trafficSplitting`, so what-if can report a modification after successful provisioning. Do not copy these read-only properties into Bicep or perform portal/CLI resource adjustments to eliminate that report.
 
 The sole workflow is `.github/workflows/client.yml`. PRs validate; main/manual runs deploy only after repository variable `LINKED_ASSETS_RELEASE_READY` is set to `true`. Leave that unset until the checklist's live and delivery prerequisites pass. It uses public style URL repository variables with the same names as the publish environment variables and secret `AZURE_STATIC_WEB_APPS_API_TOKEN_LINKED_ASSETS`, scoped to the one SWA. No secret value is stored here.
 
