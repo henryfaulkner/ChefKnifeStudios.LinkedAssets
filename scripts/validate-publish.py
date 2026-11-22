@@ -23,4 +23,6 @@ for path in root.rglob('*'):
 settings = json.loads((root / 'appsettings.json').read_text(encoding='utf-8-sig'))
 assert set(settings) == {'Map'}
 assert set(settings['Map']) == {'LightStyleUrl', 'DarkStyleUrl'}
+for suffix in ('.br', '.gz'):
+    assert not (root / ('appsettings.json' + suffix)).exists(), 'Stale precompressed runtime configuration could override injected map settings'
 print('Static WASM artifact, fallback rules, MIME types and fixture exclusion verified.')
