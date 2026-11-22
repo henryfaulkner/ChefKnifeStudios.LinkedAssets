@@ -63,9 +63,9 @@ test('500-link stress fixture preserves all labels and 5995 pairwise segments',a
       await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));times.push(performance.now()-start);
     }return times.sort((a,b)=>a-b);
   });
-  if(testInfo.project.name==='chromium')expect(timings[Math.ceil(timings.length*0.95)-1]).toBeLessThanOrEqual(150);
   await testInfo.attach('filter-timings',{body:JSON.stringify({counts,timings,p95:timings.at(-1)}),contentType:'application/json'});
   console.log(testInfo.project.name,JSON.stringify({counts,timings,filterP95:timings.at(-1)}));
+  if(testInfo.project.name==='chromium')expect(timings[Math.ceil(timings.length*0.95)-1]).toBeLessThanOrEqual(150);
   await page.evaluate(()=>adapter.dispose(instance));
   expect(await page.evaluate(()=>document.querySelectorAll('#graph canvas').length)).toBe(0);
 });

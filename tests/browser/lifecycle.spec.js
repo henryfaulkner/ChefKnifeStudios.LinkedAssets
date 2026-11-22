@@ -4,7 +4,7 @@ test('20 selection, close and theme cycles dispose maps and callbacks',async({pa
   await interceptGeotab(page);
   await page.route('**/appsettings.json',r=>r.fulfill({json:{Map:{LightStyleUrl:'/map-light.json',DarkStyleUrl:'/map-dark.json'}}}));
   await page.route('**/map-*.json',r=>r.fulfill({json:{version:8,sources:{},layers:[{id:'background',type:'background',paint:{'background-color':'#DDD'}}]}}));
-  await page.goto('/');await page.getByLabel('Geotab username or email').fill('fixture');await page.getByLabel('Password',{exact:true}).fill('synthetic-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();
+  await page.goto('/?agent=true');await page.getByLabel('Geotab username or email').fill('fixture');await page.getByLabel('Password',{exact:true}).fill('synthetic-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();
   await page.getByText('Browse links',{exact:true}).click();
   await page.evaluate(()=>{
     window.activeMaps=0;const Original=maplibregl.Map;

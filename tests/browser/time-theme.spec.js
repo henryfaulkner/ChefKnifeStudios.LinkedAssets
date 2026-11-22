@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {basic,interceptGeotab} from './fixtures.js';
 test.use({timezoneId:'America/New_York',locale:'en-US'});
-async function login(page){await page.goto('/');await page.getByLabel('Geotab username or email').fill('fixture');await page.getByLabel('Password',{exact:true}).fill('synthetic-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByText('3 / 3 links')).toBeVisible();}
+async function login(page){await page.goto('/?agent=true');await page.getByLabel('Geotab username or email').fill('fixture');await page.getByLabel('Password',{exact:true}).fill('synthetic-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByText('3 / 3 links')).toBeVisible();}
 test('DST repeated local times retain timezone and distinct UTC details',async({page})=>{
   const data=structuredClone(basic);data.DeviceStatusInfo.find(s=>s.device.id==='d1').dateTime='2026-11-01T05:30:00Z';data.DeviceStatusInfo.find(s=>s.device.id==='d5').dateTime='2026-11-01T06:30:00Z';
   await interceptGeotab(page,data);await login(page);await page.getByText('Browse links',{exact:true}).click();await page.getByRole('button',{name:/^Manual:/}).click();

@@ -13,7 +13,7 @@
     [Parameter] public bool Dark {get;set;}
     [Parameter] public Dictionary<string,Dictionary<string,NodePosition>> Layouts {get;set;}=new();
     [Parameter] public EventCallback<string> Selected {get;set;}
-    [Parameter] public EventCallback<LayoutChange> LayoutChanged {get;set;}
+    [Parameter] public EventCallback<LayoutChange[]> LayoutChanged {get;set;}
     [Parameter] public EventCallback<GraphViewport> ViewportChanged {get;set;}
     private ElementReference _element;
     private GraphCanvasJsInterop? _interop;
@@ -35,8 +35,10 @@
         {
             if(firstRender){_interop=new(JS);_self=DotNetObjectReference.Create(this);await _interop.CreateAsync(_element,_self,Theme);}
             if(_interop is null||_disposed)return;
-            var snapshotChanged=!_lastLinks.Equals(Links);
-            var visibilityChanged=!_lastVisible.SequenceEqual(VisibleKeys);
+            var links=Links;
+            var visibleKeys=VisibleKeys.ToArray();
+            var snapshotChanged=!_lastLinks.Equals(links);
+            var visibilityChanged=!_lastVisible.SequenceEqual(visibleKeys);
             if(snapshotChanged||visibilityChanged)
             {
                 if(!_lastLinks.IsDefault)await CommitAsync(await _interop.CaptureAsync());
@@ -46,9 +48,13 @@
                     var retained=new Dictionary<string,object>();
                     foreach(var (key,positions) in Layouts)foreach(var position in positions.Values)
                         retained[VisualIdentity.Node(key,position.DeviceId)]=new{x=position.X,y=position.Y};
-                    await CommitAsync(await _interop.ReplaceAsync(_revision,Payload,retained));_lastLinks=Links;
+                    var payload=LinkProjection.Sort(links,SortMode.MostRecent).Select(link=>GraphPayload.From(link,LinkTypeTokens.Color(link.Type,Dark))).ToArray();
+                    var changes=await _interop.ReplaceAsync(_revision,payload,retained);
+                    await CommitAsync(changes);
+                    _lastLinks=links;
                 }
-                await _interop.VisibleAsync(_revision,VisibleKeys);_lastVisible=VisibleKeys.ToArray();
+                await CommitAsync(await _interop.VisibleAsync(_revision,visibleKeys,visibilityChanged));
+                _lastVisible=visibleKeys;
             }
             if(firstRender||_lastDark!=Dark){await _interop.ThemeAsync(Theme,Payload);_lastDark=Dark;}
             if(firstRender||_lastSelection!=SelectedKey||snapshotChanged){await _interop.SelectionAsync(_revision,SelectedKey);_lastSelection=SelectedKey;}
@@ -56,9 +62,9 @@
         catch(JSException){_error="The graph could not render. Browse links remains available.";StateHasChanged();}
         finally{_updating=false;if(_renderAgain&&!_disposed){_renderAgain=false;await InvokeAsync(StateHasChanged);}}
     }
-    private async Task CommitAsync(LayoutChange[] changes){foreach(var change in changes)await LayoutChanged.InvokeAsync(change);}
+    private Task CommitAsync(LayoutChange[] changes)=>changes.Length>0?LayoutChanged.InvokeAsync(changes):Task.CompletedTask;
     [JSInvokable] public Task LinkSelected(string key,long revision)=>!_disposed&&revision==_revision?Selected.InvokeAsync(key):Task.CompletedTask;
-    [JSInvokable] public Task LayoutCommitted(string key,NodePosition[] positions,long revision)=>!_disposed&&revision==_revision?LayoutChanged.InvokeAsync(new(key,positions)):Task.CompletedTask;
+    [JSInvokable] public Task LayoutCommitted(string key,NodePosition[] positions,long revision)=>!_disposed&&revision==_revision?CommitAsync([new(key,positions)]):Task.CompletedTask;
     [JSInvokable] public Task ViewportCommitted(GraphPan pan,double zoom,long revision)=>!_disposed&&revision==_revision?ViewportChanged.InvokeAsync(new(pan.X,pan.Y,zoom)):Task.CompletedTask;
     public async Task ArrangeAsync(string[] keys){if(_interop is null)return;await CommitAsync(await _interop.CaptureAsync());++_revision;await CommitAsync(await _interop.ArrangeAsync(_revision,keys));}
     public async Task NavigateAsync(string action,string? key=null,string? deviceId=null,double dx=0,double dy=0)

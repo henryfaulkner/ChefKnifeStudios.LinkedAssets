@@ -1,0 +1,24 @@
+@using System.Web
+@using Microsoft.AspNetCore.Components.Routing
+@implements IDisposable
+@inject NavigationManager Navigation
+
+@if (IsEnabled)
+{
+    @ChildContent
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool IsEnabled => string.Equals(
+        HttpUtility.ParseQueryString(Navigation.ToAbsoluteUri(Navigation.Uri).Query)["agent"],
+        "true", StringComparison.OrdinalIgnoreCase);
+
+    protected override void OnInitialized() => Navigation.LocationChanged += LocationChanged;
+
+    private void LocationChanged(object? sender, LocationChangedEventArgs args) =>
+        _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Navigation.LocationChanged -= LocationChanged;
+}

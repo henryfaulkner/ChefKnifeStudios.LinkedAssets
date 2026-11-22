@@ -1,0 +1,10 @@
+.darkmode-fab-container {
+    position: fixed;
+    right: 24px;
+    bottom: calc(24px + var(--support-footer-height));
+    z-index: 20;
+}
+
+::deep .mdc-fab {
+    box-shadow: none !important;
+}

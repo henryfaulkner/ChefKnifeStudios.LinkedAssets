@@ -1,0 +1,9 @@
+<div class="darkmode-fab-container">
+    <MatFAB Icon="@(Dark ? "dark_mode" : "light_mode")" Mini="true" OnClick="Toggle"
+            aria-label="@(Dark ? "Light theme" : "Dark theme")" title="@(Dark ? "Light theme" : "Dark theme")" />
+</div>
+
+@code {
+    [Parameter] public bool Dark { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> Toggle { get; set; }
+}

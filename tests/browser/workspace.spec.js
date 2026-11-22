@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
-import {basic,interceptGeotab} from './fixtures.js';
+import {basic,interceptGeotab,withRefreshBoundary,crossRefreshBoundary} from './fixtures.js';
 export async function signIn(page){
-  await page.goto('/');await page.getByLabel('Geotab username or email').fill('fixture');await page.getByLabel('Password',{exact:true}).fill('synthetic-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();
+  await page.goto('/?agent=true');await page.getByLabel('Geotab username or email').fill('fixture');await page.getByLabel('Password',{exact:true}).fill('synthetic-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();
   await expect(page.getByText('3 / 3 links')).toBeVisible();
 }
 async function browse(page,type){await page.getByText('Browse links',{exact:true}).click();await page.getByRole('button',{name:new RegExp(`^${type}:`)}).click();}
@@ -80,15 +80,15 @@ test('production graphs, combined filters, overlay, details, sorting and keyboar
 });
 test('partial source failure is explicit and failed refresh retains previous links',async({page})=>{
   let failed=false;
-  await interceptGeotab(page,basic,body=>failed&&body.method!=='Authenticate'?{error:{name:'SecurityException'}}:undefined);
-  await signIn(page);await browse(page,'Manual');failed=true;await page.getByRole('button',{name:'Refresh',exact:true}).click();
+  await interceptGeotab(page,withRefreshBoundary(),body=>failed&&body.method!=='Authenticate'?{error:{name:'SecurityException'}}:undefined);
+  await signIn(page);await browse(page,'Manual');failed=true;await crossRefreshBoundary(page);
   await expect(page.getByRole('alert')).toContainText('Both link sources failed');
   await expect(page.getByText('3 / 3 links')).toBeVisible();
 });
 test('expired reads return to sign-in and erase prior source state',async({page})=>{
   let expired=false;
-  await interceptGeotab(page,basic,body=>expired&&body.method!=='Authenticate'?{error:{name:'InvalidUserException'}}:undefined);
-  await signIn(page);expired=true;await page.getByRole('button',{name:'Refresh',exact:true}).click();
+  await interceptGeotab(page,withRefreshBoundary(),body=>expired&&body.method!=='Authenticate'?{error:{name:'InvalidUserException'}}:undefined);
+  await signIn(page);expired=true;await crossRefreshBoundary(page);
   await expect(page.getByLabel('Password',{exact:true})).toBeVisible();
   await expect(page.locator('.graph-host')).toHaveCount(0);
 });

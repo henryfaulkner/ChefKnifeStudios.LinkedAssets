@@ -39,3 +39,14 @@ export async function interceptGeotab(page, data = basic, override = () => undef
   });
   return calls;
 }
+
+// A future duplicate membership schedules a real automatic refresh without changing the graph.
+export function withRefreshBoundary() {
+  const data = structuredClone(basic);
+  data.AssetLinkDetails.push({id:'refresh-boundary',assetLinkId:'same',device:{id:'d1'},activeFrom:'2026-11-21T12:00:01Z',activeTo:'9999-12-31T23:59:59Z'});
+  return data;
+}
+export async function crossRefreshBoundary(page) {
+  await page.clock.setFixedTime(new Date('2026-11-21T12:00:02Z'));
+  await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
+}

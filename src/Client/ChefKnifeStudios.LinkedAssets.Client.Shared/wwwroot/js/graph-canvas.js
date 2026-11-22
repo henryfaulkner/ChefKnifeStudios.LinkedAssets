@@ -3,7 +3,7 @@ let sequence = 0;
 export function create(element, callbacks, theme) {
     const cy = cytoscape({container:element, elements:[], layout:{name:'preset',fit:false},pan:{x:0,y:0},zoom:1,minZoom:0.2, maxZoom:3,
         wheelSensitivity:0.2, desktopTapThreshold:4, touchTapThreshold:4, boxSelectionEnabled:false,
-        selectionType:'single', autoungrabify:true, pixelRatio:1, style:[
+        selectionType:'single', autoungrabify:true, pixelRatio:'auto', style:[
             {selector:'node:childless',style:{width:8,height:8,'background-color':'data(color)',label:'data(label)',
                 'font-family':'Roboto','font-size':12,color:theme.foreground,'text-valign':'top','text-margin-y':-7,
                 'text-events':'yes','overlay-padding':10,'overlay-opacity':0}},
@@ -18,6 +18,7 @@ export function create(element, callbacks, theme) {
     state.invoke=invoke;
     const groupFor=target=>target.isEdge()?cy.getElementById(target.data('parentId')):target.isParent()?target:target.parent();
     state.commit=group=>{
+        const layout=state.groups?.get(group?.data('key'));if(layout)layout.measurement=null;
         if(group?.length)invoke('LayoutCommitted',group.data('key'),group.children().map(n=>({deviceId:n.data('deviceId'),x:n.position('x'),y:n.position('y')})),state.revision);
     };
     cy.on('tap','node,edge',event=>{
@@ -115,35 +116,56 @@ export function replaceSnapshot(id,revision,graphs,retainedPositions) {
     return capture(id);
 }
 function pack(s,keys,top=220){
-    const cy=s.cy;let x=48,y=top,rowHeight=0;const width=Math.max(320,s.element.clientWidth);
+    const cy=s.cy;const width=Math.max(320,s.element.clientWidth);
     // Geometry reads must precede the mutation batch: compound bounds/label caches
     // are deliberately deferred by Cytoscape while a batch is open.
     const measured=keys.map(key=>{
-        const group=s.groups.get(key)?.parent;
-        if(!group?.length||s.groups.get(key)?.hidden)return null;
-        const children=group.children(),bounds=children.boundingBox({includeLabels:true});
-        const box={x1:bounds.x1-24,y1:bounds.y1-24,w:bounds.w+48,h:bounds.h+48};
-        return{children,box};
-    }).filter(Boolean);
-    cy.batch(()=>{
-        for(const {children,box} of measured){
-            if(x>48&&x+box.w>width-48){x=48;y+=rowHeight+80;rowHeight=0;}
-            const dx=x-box.x1,dy=y-box.y1;
-            children.positions(n=>({x:n.position('x')+dx,y:n.position('y')+dy}));
-            x+=box.w+80;rowHeight=Math.max(rowHeight,box.h);
+        const group=s.groups.get(key);
+        if(!group?.parent.length||group.hidden)return null;
+        const children=group.parent.children(),positions=children.map(n=>({...n.position()})),origin=positions[0];
+        // Translations preserve measured dimensions and label offsets. Node edits and
+        // snapshot replacement invalidate these values before the next arrangement.
+        if(!group.measurement){
+            const bounds=children.boundingBox({includeLabels:true});
+            group.measurement={x:bounds.x1-24-origin.x,y:bounds.y1-24-origin.y,w:bounds.w+48,h:bounds.h+48};
         }
+        const m=group.measurement,box={x1:origin.x+m.x,y1:origin.y+m.y,w:m.w,h:m.h};
+        return{key,children,positions,box};
+    }).filter(Boolean);
+    if(!measured.length)return[];
+    const cellWidth=Math.max(...measured.map(g=>g.box.w));
+    const cellHeight=Math.max(...measured.map(g=>g.box.h));
+    const columns=Math.max(1,Math.min(measured.length,Math.floor((width-96+80)/(cellWidth+80))));
+    const moved=[],movedKeys=[];
+    cy.batch(()=>{
+        measured.forEach(({key,children,positions,box},index)=>{
+            const x=48+(index%columns)*(cellWidth+80),y=top+Math.floor(index/columns)*(cellHeight+80);
+            const dx=x-box.x1,dy=y-box.y1;
+            if(Math.abs(dx)<1e-8&&Math.abs(dy)<1e-8)return;
+            children.silentPositions((n,i)=>({x:positions[i].x+dx,y:positions[i].y+dy}));
+            moved.push(...children);
+            movedKeys.push(key);
+        });
+        cy.collection(moved).emit('position');
     });
+    if(moved.length)cy.forceRender();
+    return movedKeys;
 }
 export function capture(id){const s=get(id);s.finish();return [...s.groups].map(([key,g])=>({key,positions:g.parent.children().map(n=>({deviceId:n.data('deviceId'),x:n.position('x'),y:n.position('y')}))}));}
 export function captureActive(id){const s=get(id),group=s.gesture?.moved?s.gesture.group:null;s.finish();return group?[{key:group.data('key'),positions:group.children().map(n=>({deviceId:n.data('deviceId'),x:n.position('x'),y:n.position('y')}))}]:[];}
 export function arrange(id,revision,keys){const s=command(id,revision);if(!s)return[];pack(s,keys);return capture(id);}
-export function setVisible(id,revision,keys){
-    const s=command(id,revision);if(!s)return;const visible=new Set(keys);
+export function setVisible(id,revision,keys,reflow=true){
+    const s=command(id,revision);if(!s)return[];const visible=new Set(keys);
     const hide=[],show=[];
     for(const [key,group] of s.groups){const hidden=!visible.has(key);if(Boolean(group.hidden)!==hidden)(hidden?hide:show).push(group.parent[0]);}
     // display:none also hides descendant nodes and their edges, retaining positions.
-    s.cy.batch(()=>{s.cy.collection(hide).style('display','none');s.cy.collection(show).style('display','element');});
-    for(const [key,group] of s.groups)group.hidden=!visible.has(key);
+    s.cy.batch(()=>{
+        s.cy.collection(hide).style('display','none');s.cy.collection(show).style('display','element');
+        for(const [key,group] of s.groups)group.hidden=!visible.has(key);
+    });
+    if(!reflow)return[];
+    const moved=new Set(pack(s,keys));
+    return capture(id).filter(change=>moved.has(change.key));
 }
 export function setSelection(id,revision,key){
     const s=command(id,revision);if(!s)return;

@@ -20,7 +20,7 @@ public sealed class GraphCanvasJsInterop(IJSRuntime js) : IAsyncDisposable
     public ValueTask<LayoutChange[]> CaptureAsync()=>_module!.InvokeAsync<LayoutChange[]>("captureActive",_id);
     public ValueTask<LayoutChange[]> ReplaceAsync(long revision,GraphPayload[] graphs,Dictionary<string,object> positions)=>
         _module!.InvokeAsync<LayoutChange[]>("replaceSnapshot",_id,revision,graphs,positions);
-    public ValueTask VisibleAsync(long revision,string[] keys)=>_module!.InvokeVoidAsync("setVisible",_id,revision,keys);
+    public ValueTask<LayoutChange[]> VisibleAsync(long revision,string[] keys,bool reflow)=>_module!.InvokeAsync<LayoutChange[]>("setVisible",_id,revision,keys,reflow);
     public ValueTask SelectionAsync(long revision,string? key)=>_module!.InvokeVoidAsync("setSelection",_id,revision,key);
     public ValueTask ThemeAsync(object theme,GraphPayload[] graphs)=>_module!.InvokeVoidAsync("setTheme",_id,theme,graphs);
     public ValueTask<LayoutChange[]> ArrangeAsync(long revision,string[] keys)=>_module!.InvokeAsync<LayoutChange[]>("arrange",_id,revision,keys);

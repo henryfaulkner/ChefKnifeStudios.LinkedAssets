@@ -30,7 +30,7 @@ AssetLink member history remains explicitly unverified until the target server's
 
 ## Explore locally with mock data
 
-Start the app using the Run locally command above, then open another terminal:
+Start the app at `https://localhost:7099/`, the preview's default target, then open another terminal. To use the HTTP Run locally command above instead, set `$env:LA_PREVIEW_URL = 'http://localhost:5180'` before launching the preview:
 
 ```powershell
 cd tests/browser
@@ -42,6 +42,20 @@ npm run preview
 This opens a separate Chromium window, signs in with test-only values, and displays three synthetic links: Automatic, Manual and Cold Chain. You can drag graphs, search, toggle types, sort and open details with fixture positions/report times. The preview uses OpenFreeMap street maps in light and dark themes with the actual pin renderer; internet access is required, and no map key is needed. A yellow MOCK DATA notice identifies this window. Close it or press Ctrl+C to stop.
 
 All Geotab API responses in this window are intercepted locally; no real username/password or unlocked account is needed. If you sign out, enter any nonempty username/password to sign back into the preview. Reload retains the mock session. Normal browser windows still require actual Geotab access. The fixtures and launcher remain in test tooling and are excluded from the published app. Live access verification remains open under LA-004/LA-037.
+
+## Agent verification UI
+
+Wrap optional verification controls in the shared `AgentOnly` component:
+
+```razor
+<AgentOnly>
+    <button @onclick="VerifyFeature">Verify feature</button>
+</AgentOnly>
+```
+
+The wrapper renders its contents only when the current URL includes `agent=true`, for example `https://localhost:7099/?agent=true`. Append `&agent=true` when other query parameters are present. Omitting the parameter or setting `agent=false` hides the contents entirely, including from keyboard navigation and the accessibility tree. URL changes update the wrapper; no preference is persisted. Use this wrapper for all agent-only visibility decisions instead of parsing the URL or adding CSS rules in individual controls.
+
+This is an explicit presentation opt-in that anyone can use, not agent detection or an authorization boundary. It uses the same application state and actions. Refresh, snapshot status/source coverage, zoom/Fit controls, and Browse links are available only inside this wrapper for agent verification tasks; it is disabled while reads are running.
 
 ## Tests without an account
 
@@ -59,7 +73,7 @@ Pop-Location
 az bicep build --file bicep/main.bicep --outfile artifacts/infra/main.json
 ```
 
-Stop any existing process on port 5180 before the managed static-host run. The Python host is test tooling that applies the SWA fallback/header contract; it is never published as an application backend. To test a running development host instead, leave both `LA_*` variables unset. Hosting-only checks skip in that mode.
+Stop any existing process on port 5180 before the managed static-host run. The Python host is test tooling that applies the SWA fallback/header contract; it is never published as an application backend. To test a running development host instead, leave `LA_STATIC_HOST` and `LA_START_STATIC_HOST` unset. Browser tests and `capture.mjs` default to `https://localhost:7099/`, matching the preview; set `LA_PREVIEW_URL` to target another development URL. Hosting-only checks skip in development mode.
 
 Fixtures and their provenance/count manifest are under `tests/fixtures/geotab`; browser interception is in `tests/browser/fixtures.js`. Tests run the production transport, normalization, view model and adapters. Release publishing checks that fixtures and test logins are absent from `artifacts/client/wwwroot`.
 

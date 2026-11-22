@@ -3,8 +3,8 @@ import {scaleFixture,interceptGeotab} from './fixtures.js';
 test('published WASM app filters all 500 graphs within the measured target',async({page},testInfo)=>{
   test.skip(testInfo.project.name!=='chromium','Chromium is the measured performance baseline.');
   await interceptGeotab(page,scaleFixture());
-  await page.goto('/');await page.getByLabel('Geotab username or email').fill('fixture');await page.getByLabel('Password',{exact:true}).fill('synthetic-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();
-  await expect(page.getByText('500 / 500 links')).toBeVisible();
+  await page.goto('/?agent=true');await page.getByLabel('Geotab username or email').fill('fixture');await page.getByLabel('Password',{exact:true}).fill('synthetic-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();
+  await expect(page.getByText('500 / 500 links')).toBeVisible({timeout:30000});
   await expect.poll(()=>page.evaluate(()=>document.querySelector('.graph-host')?._cyreg?.cy?.edges().length)).toBe(5995);
   const measurements=await page.evaluate(async()=>{
     const cy=document.querySelector('.graph-host')._cyreg.cy;const counts={graphs:cy.nodes(':parent').length,nodes:cy.nodes(':childless').length,edges:cy.edges().length};

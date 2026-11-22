@@ -1,9 +1,9 @@
 import {test,expect} from '@playwright/test';
-import {basic,interceptGeotab} from './fixtures.js';
-async function login(page){await page.goto('/');await page.getByLabel('Geotab username or email').fill('fixture');await page.getByLabel('Password',{exact:true}).fill('synthetic-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByText('3 / 3 links')).toBeVisible();}
+import {basic,interceptGeotab,withRefreshBoundary,crossRefreshBoundary} from './fixtures.js';
+async function login(page){await page.goto('/?agent=true');await page.getByLabel('Geotab username or email').fill('fixture');await page.getByLabel('Password',{exact:true}).fill('synthetic-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByText('3 / 3 links')).toBeVisible();}
 async function openBrowse(page){await page.getByText('Browse links',{exact:true}).click();}
 test('filters preserve hidden coordinates and clear a hidden selection without moving input focus',async({page})=>{
-  const calls=await interceptGeotab(page);await login(page);await openBrowse(page);
+  const calls=await interceptGeotab(page,withRefreshBoundary());await login(page);await openBrowse(page);
   await page.getByRole('button',{name:/^Automatic:/}).click();
   const positions=await page.evaluate(()=>document.querySelector('.graph-host')._cyreg.cy.nodes(':childless').map(n=>({id:n.id(),p:{...n.position()}})));
   await page.getByLabel('Search devices').fill('no such device');
@@ -13,9 +13,9 @@ test('filters preserve hidden coordinates and clear a hidden selection without m
   await page.getByLabel('Search devices').fill('');
   await expect.poll(()=>page.evaluate(()=>document.querySelector('.graph-host')._cyreg.cy.nodes(':childless').map(n=>({id:n.id(),p:{...n.position()}})))).toEqual(positions);
   const loads=calls.filter(c=>c.type==='AssetLink').length;
-  await page.getByRole('button',{name:'Refresh',exact:true}).click();
+  await crossRefreshBoundary(page);
   await expect.poll(()=>calls.filter(c=>c.type==='AssetLink').length).toBe(loads+1);
-  await expect(page.getByRole('button',{name:'Refresh',exact:true})).toBeEnabled();
+  await expect(page.getByText(/Reading Geotab links/)).toHaveCount(0);
   await expect(page.locator('.details-blade')).toHaveCount(0);
 });
 test('slow obsolete selection cannot replace the current member reports',async({page})=>{
@@ -74,7 +74,7 @@ test('local map styles render in the actual blade across themes without losing r
   await page.getByRole('button',{name:/^Manual:/}).click();
   await expect.poll(()=>page.locator('.maplibregl-marker').count()).toBe(2);
   await page.getByRole('button',{name:'Dark theme',exact:true}).click();
-  await expect.poll(()=>page.evaluate(()=>currentBladeMap.getPaintProperty('background','background-color'))).toBe('#263238');
+  await expect.poll(()=>page.evaluate(()=>currentBladeMap.getLayer('background')?currentBladeMap.getPaintProperty('background','background-color'):null)).toBe('#263238');
   await expect.poll(()=>page.evaluate(()=>currentBladeMap.getLayer('member-pins')?new Set(currentBladeMap.queryRenderedFeatures({layers:['member-pins']}).map(f=>f.properties.deviceId)).size:0)).toBe(2);
   await expect.poll(()=>page.locator('.maplibregl-marker').count()).toBe(2);
   await expect(page.locator('.member-reports li')).toHaveCount(2);

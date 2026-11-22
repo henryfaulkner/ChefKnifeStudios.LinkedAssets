@@ -1,7 +1,7 @@
 import {chromium} from '@playwright/test';
 import {interceptGeotab} from './fixtures.js';
 
-const appUrl = new URL(process.env.LA_PREVIEW_URL ?? 'http://localhost:5180');
+const appUrl = new URL(process.env.LA_PREVIEW_URL ?? 'https://localhost:7099/');
 if (!['localhost', '127.0.0.1', '[::1]'].includes(appUrl.hostname)) {
   throw new Error('The mock preview must target a local app. Set LA_PREVIEW_URL to a localhost URL.');
 }
@@ -37,7 +37,6 @@ try {
   await page.getByLabel('Geotab username or email').fill('fixture');
   await page.getByLabel('Password', {exact:true}).fill('synthetic-only');
   await page.getByRole('button', {name:'Sign in',exact:true}).click();
-  await page.getByText('3 / 3 links').waitFor({timeout:45000});
   await page.waitForFunction(() =>
     document.querySelector('.graph-host')?._cyreg?.cy?.nodes(':childless').length === 7);
   await page.evaluate(() => { document.title = 'Linked Assets — MOCK DATA'; });

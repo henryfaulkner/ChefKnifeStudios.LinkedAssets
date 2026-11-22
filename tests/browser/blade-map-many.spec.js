@@ -8,7 +8,7 @@ test('the actual details blade fits all 25 available member pins on first creati
   await interceptGeotab(page,data);
   await page.route('**/appsettings.json',r=>r.fulfill({json:{Map:{LightStyleUrl:'/map-light.json',DarkStyleUrl:'/map-dark.json'}}}));
   await page.route('**/map-*.json',r=>r.fulfill({json:{version:8,sources:{},layers:[{id:'background',type:'background',paint:{'background-color':'#DDD'}}]}}));
-  await page.goto('/');await page.getByLabel('Geotab username or email').fill('fixture');await page.getByLabel('Password',{exact:true}).fill('synthetic-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();
+  await page.goto('/?agent=true');await page.getByLabel('Geotab username or email').fill('fixture');await page.getByLabel('Password',{exact:true}).fill('synthetic-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();
   await page.getByLabel('Search devices').waitFor();
   await page.evaluate(()=>{const Original=maplibregl.Map;maplibregl.Map=class extends Original{constructor(options){super(options);window.bladeMap=this;}};});
   await page.getByText('Browse links',{exact:true}).click();await page.getByRole('button',{name:/^Automatic:/}).click();

@@ -1,0 +1,7 @@
+<div class="sign-out-fab-container">
+    <MatFAB Icon="@MatIconNames.Exit_to_app" Mini="true" OnClick="SignedOut" aria-label="Sign out" title="Sign out" />
+</div>
+
+@code {
+    [Parameter] public EventCallback<MouseEventArgs> SignedOut { get; set; }
+}

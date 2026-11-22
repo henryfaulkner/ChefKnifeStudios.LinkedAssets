@@ -1,8 +1,8 @@
 ﻿<!--
 Sync Impact Report (temporary review material; remove before committing)
-Version change: 1.1.0 -> 1.1.1 (clarify complete graph visibility under filters)
+Version change: 1.1.1 -> 1.2.0 (require automatic filter reflow and a left-to-right grid)
 Modified principles: none.
-Modified sections: Product Behavior (device-name search and key toggles).
+Modified sections: Product Behavior (key toggles, result arrangement and sorting).
 Added sections: none.
 Removed sections: none.
 Follow-up TODOs: none.
@@ -186,11 +186,19 @@ when devices participate in several relationships.
   Text search and link-type filters MUST apply together.
   Excluding a link type MUST hide every graph of that type, including all nodes, name
   labels, connecting line segments, and group outlines. Hidden links MUST leave no orphan
-  lines on the canvas. Restoring a link's eligibility MUST restore its complete graph at
-  its saved local coordinates.
+  lines on the canvas. Restoring a link's eligibility MUST restore its complete graph.
+- **Result arrangement:** Device-name search and link-type filter changes MUST automatically
+  rearrange the resulting visible links into a grid, filling each row from left to right
+  before continuing on the next row. Clearing search or restoring link types MUST reflow
+  the complete resulting set without gaps reserved for hidden links. Grid cells MUST align
+  across rows and provide enough space for each graph and its device-name labels.
+  Rearrangement MUST preserve each link's internal node positions relative to one another;
+  hidden links MUST retain their local coordinates until they become visible again.
+  Automatic reflow MUST use the selected sort mode, defaulting to Most Recent.
 - **Sorting:** The page MUST expose buttons that arrange visible links logically from left
-  to right. Required modes MUST include Most Recent and Link Type. Most Recent MUST order
-  links by their latest addition, newest first; it MUST NOT substitute device report recency.
+  to right in the same grid. Required modes MUST include Most Recent and Link Type.
+  Most Recent MUST order links by their latest addition, newest first; it MUST NOT substitute
+  device report recency.
   Planning MUST define the public-API evidence for addition recency, behavior when that
   evidence is unavailable, the link-type ordering, and deterministic tie handling.
   Additional sort modes MUST be backed by a current requirement.
@@ -242,4 +250,4 @@ Every specification, implementation plan, and code review MUST assess compliance
 the applicable rules. Departures from a MUST rule require an approved constitutional
 amendment; implementation convenience alone is not an exception.
 
-**Version**: 1.1.1 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21
+**Version**: 1.2.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-22
