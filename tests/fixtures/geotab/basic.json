@@ -1,0 +1,167 @@
+{
+  "Device": [
+    {
+      "id": "d1",
+      "name": "Tractor Alpha"
+    },
+    {
+      "id": "d2",
+      "name": "Trailer Bravo"
+    },
+    {
+      "id": "d3",
+      "name": "Sensor Charlie"
+    },
+    {
+      "id": "d4",
+      "name": "Cold Box Delta"
+    },
+    {
+      "id": "d5",
+      "name": "Spare Echo"
+    },
+    {
+      "id": "d6",
+      "name": "Departed Foxtrot"
+    },
+    {
+      "id": "d7",
+      "name": "Long device name retained across independent links"
+    }
+  ],
+  "AssetLink": [
+    {
+      "id": "same",
+      "linkType": "Automatic",
+      "isActive": true,
+      "description": "Automatic membership",
+      "version": "opaque"
+    },
+    {
+      "id": "cold",
+      "linkType": "AssociatedDevice",
+      "isActive": true
+    }
+  ],
+  "AssetLinkDetails": [
+    {
+      "id": "period0",
+      "assetLinkId": "same",
+      "device": {
+        "id": "d1"
+      },
+      "activeFrom": "2026-11-01T00:00:00Z",
+      "activeTo": "9999-12-31T23:59:59Z"
+    },
+    {
+      "id": "period1",
+      "assetLinkId": "same",
+      "device": {
+        "id": "d2"
+      },
+      "activeFrom": "2026-11-01T00:00:00Z",
+      "activeTo": "9999-12-31T23:59:59Z"
+    },
+    {
+      "id": "period2",
+      "assetLinkId": "same",
+      "device": {
+        "id": "d3"
+      },
+      "activeFrom": "2026-11-01T00:00:00Z",
+      "activeTo": "9999-12-31T23:59:59Z"
+    },
+    {
+      "id": "period3",
+      "assetLinkId": "cold",
+      "device": {
+        "id": "d2"
+      },
+      "activeFrom": "2026-11-01T00:00:00Z",
+      "activeTo": "9999-12-31T23:59:59Z"
+    },
+    {
+      "id": "period4",
+      "assetLinkId": "cold",
+      "device": {
+        "id": "d4"
+      },
+      "activeFrom": "2026-11-01T00:00:00Z",
+      "activeTo": "9999-12-31T23:59:59Z"
+    },
+    {
+      "id": "departed",
+      "assetLinkId": "same",
+      "device": {
+        "id": "d6"
+      },
+      "activeFrom": "2026-11-20T11:00:00Z",
+      "activeTo": "2026-11-20T11:30:00Z"
+    },
+    {
+      "id": "repeat",
+      "assetLinkId": "same",
+      "device": {
+        "id": "d1"
+      },
+      "activeFrom": "2026-11-01T00:00:00Z",
+      "activeTo": "9999-12-31T23:59:59Z"
+    }
+  ],
+  "DeviceLink": [
+    {
+      "id": "same",
+      "linkType": "Manual",
+      "sourceDevice": {
+        "id": "d1"
+      },
+      "destinationDevice": {
+        "id": "d5"
+      },
+      "fromDate": "2026-11-15T00:00:00Z",
+      "toDate": "9999-12-31T23:59:59Z"
+    }
+  ],
+  "DeviceStatusInfo": [
+    {
+      "device": {
+        "id": "d1"
+      },
+      "latitude": 0,
+      "longitude": 0,
+      "dateTime": "2026-11-21T11:00:00Z"
+    },
+    {
+      "device": {
+        "id": "d2"
+      },
+      "latitude": 53.3,
+      "longitude": -6.2,
+      "dateTime": "2026-11-21T11:59:00Z"
+    },
+    {
+      "device": {
+        "id": "d3"
+      },
+      "latitude": null,
+      "longitude": null,
+      "dateTime": null
+    },
+    {
+      "device": {
+        "id": "d4"
+      },
+      "latitude": 52.3,
+      "longitude": 4.8,
+      "dateTime": null
+    },
+    {
+      "device": {
+        "id": "d5"
+      },
+      "latitude": 51.5,
+      "longitude": -0.1,
+      "dateTime": "2026-11-21T11:58:00Z"
+    }
+  ]
+}

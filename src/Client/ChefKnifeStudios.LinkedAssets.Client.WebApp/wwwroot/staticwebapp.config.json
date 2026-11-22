@@ -1,0 +1,11 @@
+{
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/_framework/*", "/_content/*", "/vendor/*", "/css/*", "/js/*", "/*.{json,wasm,dll,pdb,png,svg,ico,woff,woff2,js,css,map,webcil,dat,bin,br,gz}"]
+  },
+  "globalHeaders": {
+    "Blazor-Environment": "Production",
+    "X-Content-Type-Options": "nosniff"
+  },
+  "mimeTypes": { ".wasm": "application/wasm", ".woff2": "font/woff2", ".webcil": "application/octet-stream" }
+}

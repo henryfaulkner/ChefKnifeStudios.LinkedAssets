@@ -1,0 +1,18 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@using ChefKnifeStudios.LinkedAssets.Client.Shared.Services
+@using ChefKnifeStudios.LinkedAssets.Client.Shared.Constants
+@using MatBlazor
+@inject SettingsService Settings
+<div class="mj-theme @(Settings.IsDark ? "mj-dark" : "")">
+    <MatThemeProvider Theme="ThemeTokens.Create(Settings.IsDark)">
+        @Body
+        <div class="theme-control"><MatButton OnClick="Settings.ToggleAsync" Outlined="true">@(Settings.IsDark ? "Light theme" : "Dark theme")</MatButton></div>
+    </MatThemeProvider>
+</div>
+@code {
+    protected override void OnInitialized() => Settings.ThemeChanged += Changed;
+    protected override async Task OnAfterRenderAsync(bool firstRender) { if (firstRender) await Settings.InitializeAsync(); }
+    private void Changed(object? sender, EventArgs args) => _ = InvokeAsync(StateHasChanged);
+    public void Dispose() => Settings.ThemeChanged -= Changed;
+}

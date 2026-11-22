@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Client/">
+    <Project Path="src/Client/ChefKnifeStudios.LinkedAssets.Client.Core/ChefKnifeStudios.LinkedAssets.Client.Core.csproj" />
+    <Project Path="src/Client/ChefKnifeStudios.LinkedAssets.Client.Shared/ChefKnifeStudios.LinkedAssets.Client.Shared.csproj" />
+    <Project Path="src/Client/ChefKnifeStudios.LinkedAssets.Client.WebApp/ChefKnifeStudios.LinkedAssets.Client.WebApp.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ChefKnifeStudios.LinkedAssets.Client.Tests/ChefKnifeStudios.LinkedAssets.Client.Tests.csproj" />
+  </Folder>
+</Solution>

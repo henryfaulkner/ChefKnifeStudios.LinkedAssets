@@ -1,0 +1,67 @@
+@using ChefKnifeStudios.LinkedAssets.Client.Core.Graph
+@using ChefKnifeStudios.LinkedAssets.Client.Shared.Constants
+@using ChefKnifeStudios.LinkedAssets.Client.Shared.Services.JsInterop
+@using System.Collections.Immutable
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+<div class="graph-host" @ref="_element" role="img" aria-label="Linked asset graphs. Use Browse links to select and move graphs with the keyboard." tabindex="0"></div>
+@if (_error is not null){<p class="canvas-message" role="alert">@_error</p>}
+@code {
+    [Parameter] public ImmutableArray<LinkRecord> Links {get;set;}=[];
+    [Parameter] public string[] VisibleKeys {get;set;}=[];
+    [Parameter] public string? SelectedKey {get;set;}
+    [Parameter] public bool Dark {get;set;}
+    [Parameter] public Dictionary<string,Dictionary<string,NodePosition>> Layouts {get;set;}=new();
+    [Parameter] public EventCallback<string> Selected {get;set;}
+    [Parameter] public EventCallback<LayoutChange> LayoutChanged {get;set;}
+    [Parameter] public EventCallback<GraphViewport> ViewportChanged {get;set;}
+    private ElementReference _element;
+    private GraphCanvasJsInterop? _interop;
+    private DotNetObjectReference<GraphCanvas>? _self;
+    private ImmutableArray<LinkRecord> _lastLinks;
+    private string[] _lastVisible=[];
+    private string? _lastSelection;
+    private bool _lastDark,_disposed,_updating,_renderAgain;
+    private long _revision;
+    private string? _error;
+    private object Theme=>new{foreground=Dark?"#E2E2E6":"#1A1C1E"};
+    private GraphPayload[] Payload=>LinkProjection.Sort(Links,SortMode.MostRecent).Select(link=>GraphPayload.From(link,LinkTypeTokens.Color(link.Type,Dark))).ToArray();
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(_disposed||_error is not null)return;
+        if(_updating){_renderAgain=true;return;}
+        _updating=true;
+        try
+        {
+            if(firstRender){_interop=new(JS);_self=DotNetObjectReference.Create(this);await _interop.CreateAsync(_element,_self,Theme);}
+            if(_interop is null||_disposed)return;
+            var snapshotChanged=!_lastLinks.Equals(Links);
+            var visibilityChanged=!_lastVisible.SequenceEqual(VisibleKeys);
+            if(snapshotChanged||visibilityChanged)
+            {
+                if(!_lastLinks.IsDefault)await CommitAsync(await _interop.CaptureAsync());
+                ++_revision;
+                if(snapshotChanged)
+                {
+                    var retained=new Dictionary<string,object>();
+                    foreach(var (key,positions) in Layouts)foreach(var position in positions.Values)
+                        retained[VisualIdentity.Node(key,position.DeviceId)]=new{x=position.X,y=position.Y};
+                    await CommitAsync(await _interop.ReplaceAsync(_revision,Payload,retained));_lastLinks=Links;
+                }
+                await _interop.VisibleAsync(_revision,VisibleKeys);_lastVisible=VisibleKeys.ToArray();
+            }
+            if(firstRender||_lastDark!=Dark){await _interop.ThemeAsync(Theme,Payload);_lastDark=Dark;}
+            if(firstRender||_lastSelection!=SelectedKey||snapshotChanged){await _interop.SelectionAsync(_revision,SelectedKey);_lastSelection=SelectedKey;}
+        }
+        catch(JSException){_error="The graph could not render. Browse links remains available.";StateHasChanged();}
+        finally{_updating=false;if(_renderAgain&&!_disposed){_renderAgain=false;await InvokeAsync(StateHasChanged);}}
+    }
+    private async Task CommitAsync(LayoutChange[] changes){foreach(var change in changes)await LayoutChanged.InvokeAsync(change);}
+    [JSInvokable] public Task LinkSelected(string key,long revision)=>!_disposed&&revision==_revision?Selected.InvokeAsync(key):Task.CompletedTask;
+    [JSInvokable] public Task LayoutCommitted(string key,NodePosition[] positions,long revision)=>!_disposed&&revision==_revision?LayoutChanged.InvokeAsync(new(key,positions)):Task.CompletedTask;
+    [JSInvokable] public Task ViewportCommitted(GraphPan pan,double zoom,long revision)=>!_disposed&&revision==_revision?ViewportChanged.InvokeAsync(new(pan.X,pan.Y,zoom)):Task.CompletedTask;
+    public async Task ArrangeAsync(string[] keys){if(_interop is null)return;await CommitAsync(await _interop.CaptureAsync());++_revision;await CommitAsync(await _interop.ArrangeAsync(_revision,keys));}
+    public async Task NavigateAsync(string action,string? key=null,string? deviceId=null,double dx=0,double dy=0)
+    {if(_interop is not null)await _interop.NavigateAsync(action,key,deviceId,dx,dy);}
+    public async ValueTask DisposeAsync(){_disposed=true;if(_interop is not null)await _interop.DisposeAsync();_self?.Dispose();}
+}

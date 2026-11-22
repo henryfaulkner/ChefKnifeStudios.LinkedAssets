@@ -1,0 +1,15 @@
+@page "/"
+@using ChefKnifeStudios.LinkedAssets.Client.Shared.Components
+@using ChefKnifeStudios.LinkedAssets.Client.Core.Services
+@inject GeotabSessionService Session
+@inject ChefKnifeStudios.LinkedAssets.Client.Shared.ViewModels.LinkedAssetsViewModel VM
+<PageTitle>Linked Assets</PageTitle>
+@if (!_ready) { <p class="app-loader">Restoring session…</p> }
+else if (Session.Current is null) { <SignIn Authenticated="Changed" Notice="VM.Message" /> }
+else { <LinkedAssetsWorkspace SignedOut="Changed" /> }
+@code {
+    private bool _ready;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    { if (firstRender) { await Session.RestoreAsync(); _ready = true; StateHasChanged(); } }
+    private void Changed() => StateHasChanged();
+}

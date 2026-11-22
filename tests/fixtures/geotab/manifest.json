@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "origin": "synthetic; public Geotab object definitions, no tenant export",
+  "liveVerified": false,
+  "snapshotUtc": "2026-11-21T12:00:00Z",
+  "basicCounts": {
+    "Device": 7,
+    "AssetLink": 2,
+    "AssetLinkDetails": 7,
+    "DeviceLink": 1,
+    "DeviceStatusInfo": 5
+  },
+  "visibleLinks": 3,
+  "visualNodes": 7,
+  "segments": 5,
+  "scale": {
+    "links": 500,
+    "visualNodes": 2000,
+    "segments": 5995,
+    "distribution": "214 eight-member, one three-member, 285 single-member links; first device shared across all records"
+  },
+  "scenarios": [
+    "cross-source same ID",
+    "shared device",
+    "duplicate active periods",
+    "departed-member recency",
+    "independent missing report/position",
+    "zero coordinates"
+  ],
+  "generatedScenarios": "tests/browser/fixtures.js generates scale and map boundary sets; .NET tests construct interval/transport boundary cases"
+}

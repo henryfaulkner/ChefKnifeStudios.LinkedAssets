@@ -1,0 +1,7 @@
+{
+  "cytoscape/3.35.0/cytoscape.min.js": "71fa9ebec21a7ca2c40cff6aacc30d1f6464e363662ad4b2c197e1adc770cd94",
+  "maplibre/4.7.1/maplibre-gl.css": "576b085fdd9487a65a19215328c1e086c07ce5bf6da09b666b3806d3d008dae9",
+  "maplibre/4.7.1/maplibre-gl.js": "be9633c4d870e26fb37f1cfe5c5a77181667114003ea16207ac7850d8da8add1",
+  "roboto/5.2.9/roboto-latin-400-normal.woff2": "e44c11f4834bdd4d6b6da7b8ee5eaebc8acb41250cd6bce5cc82ea8262140eaa",
+  "roboto/5.2.9/roboto-latin-500-normal.woff2": "e5b29c36b2e7a2f4db58307359fa574004be43d39790e4b7a3cf80a7b16e8bb6"
+}

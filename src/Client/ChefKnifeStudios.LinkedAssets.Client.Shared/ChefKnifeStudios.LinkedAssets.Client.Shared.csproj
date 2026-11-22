@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.15" />
+    <PackageReference Include="MatBlazor" Version="2.10.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Blazored.LocalStorage" Version="4.5.0" />
+  </ItemGroup>
+  <ItemGroup><ProjectReference Include="../ChefKnifeStudios.LinkedAssets.Client.Core/ChefKnifeStudios.LinkedAssets.Client.Core.csproj" /></ItemGroup>
+</Project>

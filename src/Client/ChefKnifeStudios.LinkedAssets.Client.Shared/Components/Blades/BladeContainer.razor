@@ -1,0 +1,10 @@
+<aside class="details-blade" aria-labelledby="details-title" role="region" @onkeydown="KeyDown">
+    <header><h2 id="details-title" aria-live="polite">@Title</h2><button class="close-button" @onclick="Close" aria-label="Close details">×</button></header>
+    @ChildContent
+</aside>
+@code {
+    [Parameter] public string Title {get;set;}="Link details";
+    [Parameter] public RenderFragment? ChildContent {get;set;}
+    [Parameter] public EventCallback Close {get;set;}
+    private async Task KeyDown(KeyboardEventArgs e){if(e.Key=="Escape")await Close.InvokeAsync();}
+}

@@ -1,0 +1,103 @@
+@using System.ComponentModel
+@using ChefKnifeStudios.LinkedAssets.Client.Core.Graph
+@using ChefKnifeStudios.LinkedAssets.Client.Shared.Constants
+@using ChefKnifeStudios.LinkedAssets.Client.Shared.Components.Blades
+@using ChefKnifeStudios.LinkedAssets.Client.Shared.Services.JsInterop
+@using ChefKnifeStudios.LinkedAssets.Client.Shared.ViewModels
+@implements IAsyncDisposable
+@inject LinkedAssetsViewModel VM
+@inject SettingsService Settings
+@inject IJSRuntime JS
+<main class="workspace @(VM.Selected is null?"":"has-details")" @onkeydown="KeyDown">
+    <GraphCanvas @ref="_canvas" Links="@(VM.Snapshot?.Links??[])" VisibleKeys="VM.VisibleLinks.Select(l=>l.Key).ToArray()"
+        SelectedKey="VM.Selected?.Key" Dark="Settings.IsDark" Layouts="VM.Layouts" Selected="SelectAsync" LayoutChanged="CommitLayout" ViewportChanged="v=>VM.Viewport=v" />
+    <div class="search-control chrome"><label for="device-search">Search devices</label><input id="device-search" type="search" placeholder="Device name…" @bind="VM.Query" @bind:event="oninput" /></div>
+    <div class="link-key chrome" aria-label="Link types">
+        @foreach(var type in Enum.GetValues<LinkType>())
+        {<button class="key-toggle @(VM.EnabledTypes.Contains(type)?"":"off")" style="--link-color:@LinkTypeTokens.Color(type,Settings.IsDark)" aria-pressed="@VM.EnabledTypes.Contains(type).ToString().ToLowerInvariant()" @onclick="()=>VM.Toggle(type)"><span class="key-dot" aria-hidden="true"></span>@LinkTypeTokens.Label(type)</button>}
+    </div>
+    <div class="utility-controls chrome"><MatButton OnClick="RefreshAsync" Disabled="@(VM.State==LoadState.Loading)">Refresh</MatButton><button @onclick="SignOutAsync">Sign out</button></div>
+    <div class="snapshot-status" role="status">
+        @if(VM.Snapshot is {} snapshot){<span>Last refreshed @snapshot.FetchedAt.ToString("u") · @VM.VisibleLinks.Count() / @snapshot.Links.Length links</span>}
+        @if(VM.State==LoadState.Loading){<span>Reading Geotab links…</span>}
+    </div>
+    @if(VM.Message is {} message){<p class="coverage-banner" role="alert">@message <button @onclick="RefreshAsync">Retry</button></p>}
+    else if(VM.Snapshot is {} noted&&(noted.Sources.Any(s=>s.Coverage!=Coverage.Complete)||!noted.Issues.IsEmpty))
+    {
+        <details class="coverage-banner"><summary>Partial or unverified source coverage</summary>
+            @foreach(var source in VM.Snapshot.Sources.Where(s=>s.Coverage!=Coverage.Complete)){<p>@source.Source: @(source.Message??source.Coverage.ToString())</p>}
+            @if(!VM.Snapshot.Issues.IsEmpty){<p>@VM.Snapshot.Issues.Length source relationship notices:</p><ul>@foreach(var issue in VM.Snapshot.Issues){<li>@issue</li>}</ul>}
+            <button @onclick="RefreshAsync">Retry reads</button>
+        </details>
+    }
+    @if(VM.State!=LoadState.Loading&&!VM.VisibleLinks.Any())
+    {<div class="canvas-message"><h2>@EmptyTitle</h2><p>@EmptyDescription</p></div>}
+    <div class="sort-controls chrome"><span>Arrange links</span><MatButton Outlined="true" OnClick="()=>ArrangeAsync(SortMode.MostRecent)">Most Recent</MatButton><MatButton Outlined="true" OnClick="()=>ArrangeAsync(SortMode.LinkType)">Link Type</MatButton></div>
+    <div class="navigation-controls chrome"><button @onclick='()=>NavigateAsync("out")' aria-label="Zoom out">−</button><button @onclick='()=>NavigateAsync("in")' aria-label="Zoom in">+</button><button @onclick='()=>NavigateAsync("fit")'>Fit links</button></div>
+    <details class="browse-links chrome">
+        <summary>Browse links</summary>
+        <p class="muted">Select a link, then use the arrow keys on its button to move the group. Choose a member below to move one device.</p>
+        <ul>@foreach(var link in LinkProjection.Sort(VM.VisibleLinks,SortMode.MostRecent))
+            {<li @key="link.Key"><button aria-pressed="@((VM.Selected?.Key==link.Key).ToString().ToLowerInvariant())" @onclick="()=>BrowseAsync(link.Key)" @onkeydown="e=>NudgeAsync(e,link.Key)">@LinkTypeTokens.Label(link.Type): @string.Join(", ",link.Members.Select(m=>m.Label))</button></li>}
+        </ul>
+        @if(VM.Selected is {} focused)
+        {
+            <label for="move-member">Move with arrow keys</label><select id="move-member" @bind="_moveMember"><option value="">Whole link</option>@foreach(var member in focused.Members){<option value="@member.DeviceId">@member.Label</option>}</select>
+            <div class="nudge-controls" aria-label="Move selected link or member"><button aria-label="Move left" @onclick="()=>NudgeSelectedAsync(-10,0)">←</button><button aria-label="Move up" @onclick="()=>NudgeSelectedAsync(0,-10)">↑</button><button aria-label="Move down" @onclick="()=>NudgeSelectedAsync(0,10)">↓</button><button aria-label="Move right" @onclick="()=>NudgeSelectedAsync(10,0)">→</button></div>
+        }
+    </details>
+    @if(VM.Selected is {} selected)
+    {<LinkDetailsBlade Link="selected" Statuses="VM.MemberStatuses" Dark="Settings.IsDark" Generation="_detailsGeneration" Close="CloseAsync" />}
+</main>
+@code {
+    [Parameter] public EventCallback SignedOut {get;set;}
+    private GraphCanvas? _canvas;
+    private IJSObjectReference? _browser;
+    private Task? _browserInitialization;
+    private DotNetObjectReference<LinkedAssetsWorkspace>? _self;
+    private int _watch;
+    private Timer? _boundary;
+    private bool _disposed;
+    private long _detailsGeneration;
+    private string? _selectionKey;
+    private string _moveMember="";
+    private string EmptyTitle=>VM.State==LoadState.Failed?"Links could not be loaded":VM.Snapshot?.Links.Length==0&&VM.State!=LoadState.Partial?"No active links":VM.Snapshot?.Links.Length==0?"No links available in this partial snapshot":"No matching links";
+    private string EmptyDescription=>VM.Snapshot?.Links.Length>0?"Try a different device name or enable more link types.":VM.State==LoadState.Partial?"Review source coverage above; this is not a confirmed empty database.":"Refresh to check your current Geotab access and active relationships.";
+    protected override void OnInitialized(){VM.PropertyChanged+=Changed;Settings.ThemeChanged+=ThemeChanged;}
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {if(firstRender){_browserInitialization=InitializeBrowserAsync();await _browserInitialization;if(!_disposed)await RefreshAsync();}}
+    private async Task InitializeBrowserAsync(){_self=DotNetObjectReference.Create(this);_browser=await JS.InvokeAsync<IJSObjectReference>("import","./_content/ChefKnifeStudios.LinkedAssets.Client.Shared/js/browser-storage.js");if(!_disposed)_watch=await _browser.InvokeAsync<int>("watchVisibility",_self);}
+    private void Changed(object? sender,PropertyChangedEventArgs e)
+    {
+        if(_disposed)return;
+        if(e.PropertyName==nameof(VM.Selected)&&_selectionKey!=VM.Selected?.Key){_selectionKey=VM.Selected?.Key;++_detailsGeneration;_moveMember="";}
+        _=InvokeAsync(async()=>{StateHasChanged();if(VM.State==LoadState.Expired)await SignedOut.InvokeAsync();});
+    }
+    private void ThemeChanged(object? sender,EventArgs e)=>_=InvokeAsync(StateHasChanged);
+    private async Task RefreshAsync(){if(_disposed)return;await VM.RefreshAsync();if(!_disposed)ScheduleBoundary();}
+    private void ScheduleBoundary()
+    {
+        _boundary?.Dispose();
+        if(_disposed||VM.State is LoadState.Loading or LoadState.Failed or LoadState.Expired)return;
+        if(VM.HasKnownBoundaryPassed()){_=InvokeAsync(RefreshAsync);return;}
+        if(VM.NextBoundary is not {} boundary)return;
+        var delay=boundary-DateTimeOffset.UtcNow;
+        if(delay<=TimeSpan.Zero)return;
+        // Browser timer delays are bounded. Wake locally for distant boundaries;
+        // only a reached source boundary causes a data read.
+        if(delay>TimeSpan.FromDays(24))delay=TimeSpan.FromDays(24);
+        _boundary=new Timer(_=>_=InvokeAsync(async()=>{if(_disposed)return;if(VM.HasKnownBoundaryPassed())await RefreshAsync();else ScheduleBoundary();}),null,delay,Timeout.InfiniteTimeSpan);
+    }
+    [JSInvokable] public async Task BecameVisible(){if(!_disposed&&VM.HasKnownBoundaryPassed())await RefreshAsync();}
+    private async Task SelectAsync(string key){if(_browser is not null)await _browser.InvokeVoidAsync("rememberFocus");await VM.SelectAsync(key);}
+    private async Task BrowseAsync(string key){var selection=SelectAsync(key);await NavigateAsync("center",key);await selection;}
+    private async Task CloseAsync(){VM.ClearSelection();if(_browser is not null)await _browser.InvokeVoidAsync("restoreFocus");}
+    private void CommitLayout(LayoutChange change)=>VM.Commit(change.Key,change.Positions);
+    private async Task ArrangeAsync(SortMode mode){if(_canvas is not null)await _canvas.ArrangeAsync(LinkProjection.Sort(VM.VisibleLinks,mode).Select(l=>l.Key).ToArray());}
+    private Task NavigateAsync(string action,string? key=null)=>_canvas?.NavigateAsync(action,key)??Task.CompletedTask;
+    private async Task NudgeAsync(KeyboardEventArgs e,string key){var delta=e.Key switch{"ArrowLeft"=>(-10,0),"ArrowRight"=>(10,0),"ArrowUp"=>(0,-10),"ArrowDown"=>(0,10),_=>(0,0)};if(delta!=(0,0)&&_canvas is not null)await _canvas.NavigateAsync("nudge",key,VM.Selected?.Key==key&&_moveMember.Length>0?_moveMember:null,delta.Item1,delta.Item2);}
+    private Task NudgeSelectedAsync(int dx,int dy)=>_canvas?.NavigateAsync("nudge",VM.Selected?.Key,_moveMember.Length>0?_moveMember:null,dx,dy)??Task.CompletedTask;
+    private async Task KeyDown(KeyboardEventArgs e){if(e.Key=="Escape")await CloseAsync();}
+    private async Task SignOutAsync(){await VM.ResetAsync();await SignedOut.InvokeAsync();}
+    public async ValueTask DisposeAsync(){_disposed=true;VM.PropertyChanged-=Changed;Settings.ThemeChanged-=ThemeChanged;_boundary?.Dispose();VM.Close();if(_browserInitialization is not null){try{await _browserInitialization;}catch(JSDisconnectedException){}}if(_browser is not null){try{await _browser.InvokeVoidAsync("unwatchVisibility",_watch);await _browser.DisposeAsync();}catch(JSDisconnectedException){}}_self?.Dispose();}
+}

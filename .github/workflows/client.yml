@@ -1,0 +1,94 @@
+name: Linked Assets client
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      artifact_run_id:
+        description: 'Optional known-good workflow run ID for static rollback'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/browser/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: dotnet workload install wasm-tools
+      - run: dotnet restore --locked-mode
+      - run: dotnet build -c Release --no-restore
+      - run: dotnet test -c Release --no-build
+      - name: Publish the static client and public map settings
+        shell: pwsh
+        env:
+          LINKED_ASSETS_MAP_LIGHT_STYLE_URL: ${{ vars.LINKED_ASSETS_MAP_LIGHT_STYLE_URL }}
+          LINKED_ASSETS_MAP_DARK_STYLE_URL: ${{ vars.LINKED_ASSETS_MAP_DARK_STYLE_URL }}
+        run: ./scripts/publish.ps1
+      - name: Build Bicep without provisioning
+        run: az bicep build --file bicep/main.bicep --outfile artifacts/infra/main.json
+      - name: Install browser test tooling
+        working-directory: tests/browser
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium firefox
+      - name: Verify the published app in two engines
+        working-directory: tests/browser
+        env:
+          LA_STATIC_HOST: '1'
+          LA_START_STATIC_HOST: '1'
+        run: npx playwright test --grep-invert 'stress fixture|scale node|published WASM app filters'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linked-assets-client-${{ github.sha }}
+          path: artifacts/client/wwwroot
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failures-${{ github.run_id }}
+          path: tests/browser/test-results
+
+  deploy:
+    needs: validate
+    if: github.event_name != 'pull_request' && vars.LINKED_ASSETS_RELEASE_READY == 'true'
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: linked-assets-client-*
+          merge-multiple: true
+          path: client
+          run-id: ${{ inputs.artifact_run_id || github.run_id }}
+          github-token: ${{ github.token }}
+      - name: Require production map configuration
+        shell: python
+        run: |
+          import json
+          settings = json.load(open('client/appsettings.json', encoding='utf-8-sig'))['Map']
+          assert settings['LightStyleUrl'] and settings['DarkStyleUrl'], 'Configure both public map styles before deployment.'
+      - uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_LINKED_ASSETS }}
+          action: upload
+          app_location: ./client
+          output_location: ''
+          api_location: ''
+          skip_app_build: true
+          skip_api_build: true
