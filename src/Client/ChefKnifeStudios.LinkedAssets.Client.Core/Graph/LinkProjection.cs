@@ -31,10 +31,10 @@ public static class LinkProjection
             if (members.IsEmpty) { issues.Add($"{kind}:{id}: no known active member."); return; }
             if (members.Length == 1) local.Add("Single active member; sibling membership is unavailable or inactive.");
             if (members.Any(m => string.IsNullOrWhiteSpace(m.SourceName))) local.Add("Some device names are unavailable.");
-            var starts = all.Where(p => p.Start is {Year:>1} start && start <= now).Select(p => p.Start!.Value).ToArray();
-            var addition = coverage == Coverage.Complete && !all.Any(p => p.Start is null) && starts.Length > 0
-                ? (DateTimeOffset?)starts.Max() : null;
-            links.Add(new(kind+":"+id,kind,id,rawType,type,all,members,addition,coverage,local.ToImmutable()));
+            var recorded = all.Where(p => p.Start is {Year:>1} start && start <= now).Max(p => p.Start);
+            var addition = coverage == Coverage.Complete && !all.Any(p => p.Start is null or {Year:1}) ? recorded : null;
+            links.Add(new(kind+":"+id,kind,id,rawType,type,all,members,addition,coverage,local.ToImmutable())
+                { LatestRecordedAddition = recorded });
         }
         foreach (var asset in assets.DistinctBy(x => x.Id))
         {

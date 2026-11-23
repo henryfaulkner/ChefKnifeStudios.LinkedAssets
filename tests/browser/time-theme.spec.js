@@ -7,7 +7,7 @@ test('DST repeated local times retain timezone and distinct UTC details',async({
   await interceptGeotab(page,data);await login(page);await page.getByText('Browse links',{exact:true}).click();await page.getByRole('button',{name:/^Manual:/}).click();
   await expect(page.locator('time').filter({hasText:'EDT'})).toContainText('1:30:00 AM');
   await expect(page.locator('time').filter({hasText:'EST'})).toContainText('1:30:00 AM');
-  const utc=await page.locator('time').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('title')));
+  const utc=await page.locator('.member-reports time').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('title')));
   expect(utc).toContain('UTC: 2026-11-01T05:30:00.0000000+00:00');expect(utc).toContain('UTC: 2026-11-01T06:30:00.0000000+00:00');
 });
 test('key and every graph dot and segment share the type color in both themes',async({page})=>{

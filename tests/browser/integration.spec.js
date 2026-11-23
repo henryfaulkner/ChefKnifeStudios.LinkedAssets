@@ -2,6 +2,16 @@ import {test,expect} from '@playwright/test';
 import {basic,interceptGeotab,withRefreshBoundary,crossRefreshBoundary} from './fixtures.js';
 async function login(page){await page.goto('/?agent=true');await page.getByLabel('Geotab username or email').fill('fixture');await page.getByLabel('Password',{exact:true}).fill('synthetic-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByText('3 / 3 links')).toBeVisible();}
 async function openBrowse(page){await page.getByText('Browse links',{exact:true}).click();}
+test('AssetLink blades show recorded addition times even when full history is unverified',async({page})=>{
+  await interceptGeotab(page);await login(page);await openBrowse(page);
+  for(const [type,date] of [['Automatic','2026-11-20 11:00:00Z'],['Cold Chain','2026-11-01 00:00:00Z']]) {
+    await page.getByRole('button',{name:new RegExp(`^${type}:`)}).click();
+    const details=page.getByRole('region',{name:`${type} link`});
+    await expect(details.getByText('Latest recorded addition',{exact:true})).toBeVisible();
+    await expect(details.getByText(date,{exact:true})).toBeVisible();
+    await expect(details.getByText('Full history not verified',{exact:true})).toBeVisible();
+  }
+});
 test('filters preserve hidden coordinates and clear a hidden selection without moving input focus',async({page})=>{
   const calls=await interceptGeotab(page,withRefreshBoundary());await login(page);await openBrowse(page);
   await page.getByRole('button',{name:/^Automatic:/}).click();
@@ -65,18 +75,20 @@ test('blade stays an overlay on narrow screens and Escape returns keyboard focus
   await expect(page.locator('.details-blade')).toHaveCount(0);
   await expect(page.getByRole('button',{name:/^Cold Chain:/})).toBeFocused();
 });
-test('local map styles render in the actual blade across themes without losing reports',async({page})=>{
+test('local map styles and reports render in the actual blade in both themes',async({page})=>{
   await interceptGeotab(page);
   await page.route('**/appsettings.json',r=>r.fulfill({json:{Map:{LightStyleUrl:'/map-light.json',DarkStyleUrl:'/map-dark.json'}}}));
   await page.route('**/map-*.json',r=>r.fulfill({json:{version:8,sources:{},layers:[{id:'background',type:'background',paint:{'background-color':r.request().url().includes('dark')?'#263238':'#DDD'}}]}}));
   await login(page);await openBrowse(page);
   await page.evaluate(()=>{const Original=maplibregl.Map;maplibregl.Map=class extends Original{constructor(options){super(options);window.currentBladeMap=this;}};});
-  await page.getByRole('button',{name:/^Manual:/}).click();
-  await expect.poll(()=>page.locator('.maplibregl-marker').count()).toBe(2);
-  await page.getByRole('button',{name:'Dark theme',exact:true}).click();
-  await expect.poll(()=>page.evaluate(()=>currentBladeMap.getLayer('background')?currentBladeMap.getPaintProperty('background','background-color'):null)).toBe('#263238');
-  await expect.poll(()=>page.evaluate(()=>currentBladeMap.getLayer('member-pins')?new Set(currentBladeMap.queryRenderedFeatures({layers:['member-pins']}).map(f=>f.properties.deviceId)).size:0)).toBe(2);
-  await expect.poll(()=>page.locator('.maplibregl-marker').count()).toBe(2);
-  await expect(page.locator('.member-reports li')).toHaveCount(2);
-  await expect(page.locator('time').first()).toHaveAttribute('title',/^UTC: /);
+  for(const dark of [false,true]) {
+    if(dark)await page.getByRole('button',{name:'Dark theme',exact:true}).click();
+    await page.getByRole('button',{name:/^Manual:/}).click();
+    await expect.poll(()=>page.evaluate(()=>window.currentBladeMap?.getLayer('background')?currentBladeMap.getPaintProperty('background','background-color'):null)).toBe(dark?'#263238':'#DDD');
+    await expect.poll(()=>page.evaluate(()=>currentBladeMap.getLayer('member-pins')?new Set(currentBladeMap.queryRenderedFeatures({layers:['member-pins']}).map(f=>f.properties.deviceId)).size:0)).toBe(2);
+    await expect(page.locator('.maplibregl-marker')).toHaveCount(2);
+    await expect(page.locator('.member-reports li')).toHaveCount(2);
+    await expect(page.locator('time').first()).toHaveAttribute('title',/^UTC: /);
+    await page.getByRole('button',{name:'Close details'}).click();
+  }
 });

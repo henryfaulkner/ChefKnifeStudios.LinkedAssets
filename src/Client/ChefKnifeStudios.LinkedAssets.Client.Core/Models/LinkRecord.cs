@@ -16,7 +16,10 @@ public sealed record LinkMember(string DeviceId, string? SourceName)
 }
 public sealed record LinkRecord(string Key, string SourceKind, string SourceId, string RawType, LinkType Type,
     ImmutableArray<MemberPeriod> Periods, ImmutableArray<LinkMember> Members,
-    DateTimeOffset? LatestAddition, Coverage HistoryCoverage, ImmutableArray<string> Issues);
+    DateTimeOffset? LatestAddition, Coverage HistoryCoverage, ImmutableArray<string> Issues)
+{
+    public DateTimeOffset? LatestRecordedAddition { get; init; }
+}
 public sealed record SourceCoverage(string Source, Coverage Coverage, string? Message = null, bool IsRelationshipSource = false);
 public sealed record LinkSnapshot(DateTimeOffset FetchedAt, ImmutableArray<LinkRecord> Links,
     ImmutableArray<SourceCoverage> Sources, ImmutableArray<string> Issues)

@@ -13,6 +13,8 @@ h1{font-size:24px;font-weight:500;margin:0 0 16px}p{line-height:1.5}.app-loader{
 .sign-in label{display:block;margin:18px 0 6px}.sign-in input{width:100%;padding:10px;border:1px solid var(--border);background:var(--surface);color:var(--foreground)}
 .action{background:var(--primary);color:var(--surface);border:0;padding:12px 20px;min-height:44px;cursor:pointer}.muted{font-size:13px;color:var(--muted)}
 .workspace{position:relative;height:100dvh;overflow:hidden}.graph-host{position:absolute;inset:0;touch-action:none}
+/* The open blade covers both FABs; keep them out of the tab order until it closes. */
+.mj-theme:has(.workspace.has-details) :is(.darkmode-fab-container,.sign-out-fab-container){visibility:hidden}
 .chrome{position:absolute;z-index:2;background:var(--surface);border:1px solid var(--border);padding:10px}
 .agent-refresh-control{right:124px;bottom:calc(24px + var(--support-footer-height));z-index:20;padding:4px}
 .search-control{top:20px;left:20px;width:240px}.search-control label{display:block;font-size:12px;margin-bottom:5px;color:var(--muted)}.search-control input{border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--foreground);width:100%;padding:4px}

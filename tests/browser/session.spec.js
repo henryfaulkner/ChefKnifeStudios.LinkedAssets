@@ -41,8 +41,18 @@ test('minimal authentication restores within tab and sign-out clears session', a
   await page.goto('/?agent=true');
   await expect(page.getByLabel('Search devices')).toBeVisible({timeout:15000});
   await page.getByText('Browse links',{exact:true}).click();
-  await page.getByRole('button',{name:/^Automatic:/}).click();
-  await expect(page.locator('.details-blade')).toBeVisible();
+  const themeFab=page.getByRole('button',{name:'Dark theme',exact:true});
+  for(const width of [1440,390]) {
+    await page.setViewportSize({width,height:900});
+    await page.getByRole('button',{name:/^Automatic:/}).click();
+    const close=page.getByRole('button',{name:'Close details'});
+    await expect(close).toBeVisible();
+    await expect(signOut).toHaveCount(0);
+    await expect(themeFab).toHaveCount(0);
+    await close.click();
+    await expect(signOut).toBeVisible();
+    await expect(themeFab).toBeVisible();
+  }
   await signOut.focus();
   await expect(signOut).toBeFocused();
   await signOut.press('Enter');

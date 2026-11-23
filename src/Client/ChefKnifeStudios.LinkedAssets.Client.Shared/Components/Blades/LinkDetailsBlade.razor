@@ -21,7 +21,15 @@
         }
     </ul>
     <dl class="metadata"><dt>Source</dt><dd>@Link.SourceKind / @Link.SourceId</dd><dt>Source type</dt><dd>@Link.RawType</dd>
-        <dt>Latest addition</dt><dd>@(Link.LatestAddition?.ToString("u")??"Addition time unavailable")</dd></dl>
+        @if(Link.LatestAddition is null && Link.LatestRecordedAddition is {} recorded)
+        {
+            <dt>Latest recorded addition</dt><dd><time datetime="@recorded.ToString("O")">@recorded.ToString("u")</time><span class="member-note">Full history not verified</span></dd>
+        }
+        else
+        {
+            <dt>Latest addition</dt><dd>@(Link.LatestAddition?.ToString("u")??"Addition time unavailable")</dd>
+        }
+    </dl>
     @foreach(var issue in Link.Issues){<p class="muted">@issue</p>}
 </BladeContainer>
 @code {

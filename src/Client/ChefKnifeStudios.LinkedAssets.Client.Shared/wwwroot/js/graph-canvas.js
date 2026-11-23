@@ -111,7 +111,7 @@ export function replaceSnapshot(id,revision,graphs,retainedPositions) {
     cy.batch(()=>{cy.elements().remove();cy.add(elements);});
     s.groups=new Map(graphs.map(g=>[g.key,{parent:cy.getElementById(g.parentId)}]));
     const newKeys=graphs.filter(g=>!g.members.some(m=>previous.has(m.id))).map(g=>g.key);
-    if(retainedNodes===0)arrange(id,revision,graphs.map(g=>g.key));
+    if(retainedNodes===0)arrange(id,revision,graphs.map(g=>g.key),false);
     else if(newKeys.length){
         const bottom=Math.max(120,cy.elements().boundingBox().y2+gridGap);
         pack(s,newKeys,bottom);
@@ -163,9 +163,20 @@ function pack(s,keys,top=220){
     if(moved.length)cy.forceRender();
     return movedKeys;
 }
+// A reflow that lands entirely off-screen strands the user on an empty canvas.
+// When no visible node remains in the viewport, pan the arranged grid's origin
+// back to a fixed rendered anchor below the controls, keeping the user's zoom.
+function followViewport(s){
+    const cy=s.cy,nodes=cy.nodes(':childless').filter(n=>n.visible());
+    if(!nodes.length)return;
+    const w=cy.width(),h=cy.height();
+    if(nodes.some(n=>{const p=n.renderedPosition();return p.x>=-20&&p.y>=-20&&p.x<=w+20&&p.y<=h+20;}))return;
+    const box=nodes.boundingBox();
+    cy.pan({x:60-box.x1*cy.zoom(),y:90-box.y1*cy.zoom()});
+}
 export function capture(id){const s=get(id);s.finish();return [...s.groups].map(([key,g])=>({key,positions:g.parent.children().map(n=>({deviceId:n.data('deviceId'),x:n.position('x'),y:n.position('y')}))}));}
 export function captureActive(id){const s=get(id),group=s.gesture?.moved?s.gesture.group:null;s.finish();return group?[{key:group.data('key'),positions:group.children().map(n=>({deviceId:n.data('deviceId'),x:n.position('x'),y:n.position('y')}))}]:[];}
-export function arrange(id,revision,keys){const s=command(id,revision);if(!s)return[];pack(s,keys);return capture(id);}
+export function arrange(id,revision,keys,follow=true){const s=command(id,revision);if(!s)return[];pack(s,keys);if(follow)followViewport(s);return capture(id);}
 export function setVisible(id,revision,keys,reflow=true){
     const s=command(id,revision);if(!s)return[];const visible=new Set(keys);
     const hide=[],show=[];
@@ -177,6 +188,7 @@ export function setVisible(id,revision,keys,reflow=true){
     });
     if(!reflow)return[];
     const moved=new Set(pack(s,keys));
+    followViewport(s);
     return capture(id).filter(change=>moved.has(change.key));
 }
 export function setSelection(id,revision,key){

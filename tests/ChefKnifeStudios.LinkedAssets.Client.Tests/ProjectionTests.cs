@@ -29,7 +29,12 @@ public class ProjectionTests
         var links=Fixture().Links;
         Assert.Equal(DateTimeOffset.Parse("2026-11-20T11:00:00Z"),links.Single(x=>x.Type==LinkType.Automatic).LatestAddition);
         Assert.Equal(LinkType.Automatic,LinkProjection.Sort(links,SortMode.MostRecent).First().Type);
-        Assert.Null(Fixture(Coverage.Incomplete).Links.Single(x=>x.Type==LinkType.Automatic).LatestAddition);
+        foreach (var coverage in new[] {Coverage.Incomplete,Coverage.Unverified})
+        {
+            var automatic = Fixture(coverage).Links.Single(x=>x.Type==LinkType.Automatic);
+            Assert.Null(automatic.LatestAddition);
+            Assert.Equal(DateTimeOffset.Parse("2026-11-20T11:00:00Z"),automatic.LatestRecordedAddition);
+        }
         Assert.Equal(LinkType.Manual,LinkProjection.Sort(Fixture(Coverage.Unverified).Links,SortMode.MostRecent).First().Type);
     }
     [Theory]
@@ -77,6 +82,7 @@ public class ProjectionTests
         Assert.Equal(2,projection.Links.Length);
         Assert.All(projection.Links,l=>Assert.Single(l.Members));
         Assert.Equal(Now.AddDays(-1),projection.Links.Single(l=>l.SourceId=="a").LatestAddition);
+        Assert.Equal(Now.AddDays(-1),projection.Links.Single(l=>l.SourceId=="a").LatestRecordedAddition);
         Assert.Contains(projection.Issues,issue=>issue.Contains("DeviceLink:camera",StringComparison.Ordinal));
     }
 }

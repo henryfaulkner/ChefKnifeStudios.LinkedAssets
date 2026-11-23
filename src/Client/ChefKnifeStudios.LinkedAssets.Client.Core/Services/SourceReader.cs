@@ -73,7 +73,7 @@ public sealed class SourceReader(IGeotabReadClient client, ReadLimits? limits = 
         catch (GeotabException ex) when (ex.Failure != ReadFailure.Expired)
         { complete = false; issue = "Member history read failed: " + ex.Failure; }
         return new(rows.Values.ToImmutableArray(), !complete ? Coverage.Incomplete : _limits.DetailHistoryVerified ? Coverage.Complete : Coverage.Unverified,
-            issue ?? (!_limits.DetailHistoryVerified ? "Member history limits have not been verified against this server; addition times are unavailable." : null));
+            issue ?? (!_limits.DetailHistoryVerified ? "Full member history has not been verified against this server." : null));
     }
 
     public async Task<SourceRead<DeviceLinkDto>> DeviceLinksAsync(GeotabSession session, CancellationToken ct)

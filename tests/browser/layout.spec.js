@@ -105,3 +105,29 @@ for(const width of [1440,390]){
     if(width===1440)await page.screenshot({path:`../../artifacts/validation/grid-reflow-${testInfo.project.name}.png`});
   });
 }
+
+test('filter and sort reflows keep results on screen when the viewport is stranded',async({page})=>{
+  await page.setViewportSize({width:1440,height:900});
+  await interceptGeotab(page);await page.goto('/');
+  await page.getByLabel('Geotab username or email').fill('fixture');
+  await page.getByLabel('Password',{exact:true}).fill('synthetic-only');
+  await page.getByRole('button',{name:'Sign in',exact:true}).click();
+  const view=()=>page.evaluate(()=>{const cy=document.querySelector('.graph-host')?._cyreg?.cy;if(!cy)return{visible:0,inView:false,pan:{x:0,y:0},zoom:1};
+    const w=cy.width(),h=cy.height(),nodes=cy.nodes(':childless').filter(n=>n.visible());
+    return{visible:nodes.length,inView:nodes.some(n=>{const p=n.renderedPosition();return p.x>=-20&&p.y>=-20&&p.x<=w+20&&p.y<=h+20;}),
+      pan:{...cy.pan()},zoom:cy.zoom()};});
+  await expect.poll(()=>view().then(v=>v.visible)).toBe(7);
+  const strand=()=>page.evaluate(()=>{const cy=document.querySelector('.graph-host')._cyreg.cy;cy.viewport({zoom:1.5,pan:{x:-3000,y:3000}});});
+  await strand();expect((await view()).inView).toBe(false);
+  await page.getByLabel('Search devices').fill('Tractor');
+  await expect.poll(()=>view().then(v=>v.inView)).toBe(true);
+  await strand();expect((await view()).inView).toBe(false);
+  await page.getByRole('button',{name:'Link Type',exact:true}).click();
+  await expect.poll(()=>view().then(v=>v.inView)).toBe(true);
+  expect((await view()).zoom).toBe(1.5);
+  const settled=await view();
+  await page.getByLabel('Search devices').fill('');
+  await expect.poll(()=>view().then(v=>v.visible)).toBe(7);
+  const restored=await view();
+  expect(restored.pan).toEqual(settled.pan);expect(restored.zoom).toEqual(settled.zoom);
+});
