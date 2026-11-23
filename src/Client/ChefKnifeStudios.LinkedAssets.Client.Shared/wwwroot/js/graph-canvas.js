@@ -1,5 +1,8 @@
 const instances = new Map();
 let sequence = 0;
+const groupPadding = 10;
+const gridGap = 12;
+const gridRows = 4;
 export function create(element, callbacks, theme) {
     const cy = cytoscape({container:element, elements:[], layout:{name:'preset',fit:false},pan:{x:0,y:0},zoom:1,minZoom:0.2, maxZoom:3,
         wheelSensitivity:0.2, desktopTapThreshold:4, touchTapThreshold:4, boxSelectionEnabled:false,
@@ -7,7 +10,7 @@ export function create(element, callbacks, theme) {
             {selector:'node:childless',style:{width:8,height:8,'background-color':'data(color)',label:'data(label)',
                 'font-family':'Roboto','font-size':12,color:theme.foreground,'text-valign':'top','text-margin-y':-7,
                 'text-events':'yes','overlay-padding':10,'overlay-opacity':0}},
-            {selector:':parent',style:{'background-opacity':0,'border-opacity':0,'border-width':1,'border-color':theme.foreground,'compound-sizing-wrt-labels':'include',padding:22,label:''}},
+            {selector:':parent',style:{'background-opacity':0,'border-opacity':0,'border-width':1,'border-color':theme.foreground,'compound-sizing-wrt-labels':'include',padding:groupPadding,label:''}},
             {selector:':parent.chosen',style:{'border-opacity':0.6,'border-color':theme.foreground}},
             {selector:'edge',style:{width:1.5,'line-color':'data(color)','curve-style':'straight','overlay-padding':10,'overlay-opacity':0}}
         ]});
@@ -110,7 +113,7 @@ export function replaceSnapshot(id,revision,graphs,retainedPositions) {
     const newKeys=graphs.filter(g=>!g.members.some(m=>previous.has(m.id))).map(g=>g.key);
     if(retainedNodes===0)arrange(id,revision,graphs.map(g=>g.key));
     else if(newKeys.length){
-        const bottom=Math.max(120,cy.elements().boundingBox().y2+80);
+        const bottom=Math.max(120,cy.elements().boundingBox().y2+gridGap);
         pack(s,newKeys,bottom);
     }
     return capture(id);
@@ -127,21 +130,28 @@ function pack(s,keys,top=220){
         // snapshot replacement invalidate these values before the next arrangement.
         if(!group.measurement){
             const bounds=children.boundingBox({includeLabels:true});
-            group.measurement={x:bounds.x1-24-origin.x,y:bounds.y1-24-origin.y,w:bounds.w+48,h:bounds.h+48};
+            const inset=groupPadding+2; // Allow for the compound border and its bounds margin.
+            group.measurement={x:bounds.x1-inset-origin.x,y:bounds.y1-inset-origin.y,w:bounds.w+2*inset,h:bounds.h+2*inset};
         }
         const m=group.measurement,box={x1:origin.x+m.x,y1:origin.y+m.y,w:m.w,h:m.h};
         return{key,children,positions,box};
     }).filter(Boolean);
     if(!measured.length)return[];
-    const cellWidth=Math.max(...measured.map(g=>g.box.w));
-    const cellHeight=Math.max(...measured.map(g=>g.box.h));
-    // Fixed four rows: columns grow with the visible set (N = ceil(count/4)); the
-    // canvas pans/zooms horizontally instead of re-wrapping by viewport width.
-    // Sorted order fills each column top-to-bottom before continuing to the right.
+    // Keep the four-row column-major grid aligned without letting one large graph
+    // add whitespace to every row and column.
+    const widths=Array(Math.ceil(measured.length/gridRows)).fill(0);
+    const heights=Array(Math.min(measured.length,gridRows)).fill(0);
+    measured.forEach(({box},index)=>{
+        const col=Math.floor(index/gridRows),row=index%gridRows;
+        widths[col]=Math.max(widths[col],box.w);
+        heights[row]=Math.max(heights[row],box.h);
+    });
+    const offsets=(sizes,start)=>sizes.map(size=>{const offset=start;start+=size+gridGap;return offset;});
+    const columns=offsets(widths,48),rows=offsets(heights,top);
     const moved=[],movedKeys=[];
     cy.batch(()=>{
         measured.forEach(({key,children,positions,box},index)=>{
-            const x=48+Math.floor(index/4)*(cellWidth+80),y=top+(index%4)*(cellHeight+80);
+            const x=columns[Math.floor(index/gridRows)],y=rows[index%gridRows];
             const dx=x-box.x1,dy=y-box.y1;
             if(Math.abs(dx)<1e-8&&Math.abs(dy)<1e-8)return;
             children.silentPositions((n,i)=>({x:positions[i].x+dx,y:positions[i].y+dy}));

@@ -37,6 +37,34 @@ function expectGrid(graphs,keys){
     const a=graphs[i],b=graphs[j];expect(a.right<b.x||b.right<a.x||a.bottom<b.y||b.bottom<a.y).toBe(true);
   }
 }
+
+test('close zoom fits many complete links even with one long device name',async({page},testInfo)=>{
+  await page.setViewportSize({width:1440,height:900});
+  const data=scaleFixture(32);
+  data.AssetLinkDetails=data.AssetLinkDetails.filter(d=>/[01]$/.test(d.id));
+  data.Device.find(d=>d.id==='device-1-1').name='A long source device name that still needs to fit entirely within its column';
+  await interceptGeotab(page,data);
+  await page.goto('/');
+  await page.getByLabel('Geotab username or email').fill('fixture');
+  await page.getByLabel('Password',{exact:true}).fill('synthetic-only');
+  await page.getByRole('button',{name:'Sign in',exact:true}).click();
+  await expect.poll(()=>visibleGeometry(page).then(g=>g.length),{timeout:15000}).toBe(32);
+  const displayed=await page.evaluate(()=>{
+    const cy=document.querySelector('.graph-host')._cyreg.cy;
+    // Pan the grid just clear of the search, legend and sort overlays.
+    cy.viewport({zoom:1.5,pan:{x:100,y:-195}});
+    return cy.nodes(':parent').filter(p=>{
+      const b=p.renderedBoundingBox({includeLabels:true});
+      return b.x1>=0&&b.y1>=0&&b.x2<=cy.width()&&b.y2<=cy.height();
+    }).length;
+  });
+  expect(displayed).toBeGreaterThanOrEqual(12);
+  const graphs=await visibleGeometry(page);
+  expectGrid(graphs,[...Array.from({length:16},(_,i)=>2*i+1),...Array.from({length:16},(_,i)=>2*i)]
+    .map(i=>`AssetLink:link-${String(i).padStart(4,'0')}`));
+  await page.screenshot({path:`../../artifacts/validation/compact-grid-${testInfo.project.name}.png`});
+});
+
 for(const width of [1440,390]){
   test(`search, type toggles and both sort modes reflow aligned grid at ${width}px`,async({page},testInfo)=>{
     await page.setViewportSize({width,height:900});
