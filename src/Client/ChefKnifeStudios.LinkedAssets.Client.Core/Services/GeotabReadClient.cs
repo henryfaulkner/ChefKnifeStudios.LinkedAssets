@@ -37,7 +37,7 @@ public sealed record ReadOptions(object? Search = null, int ResultsLimit = 1000,
 public sealed record RequestPolicy(int RequestsPerMinute = 60, TimeSpan? RetryDelay = null, TimeSpan? Timeout = null);
 public interface IGeotabReadClient
 {
-    Task<GeotabSession> AuthenticateAsync(string userName, string password, string? database, CancellationToken ct);
+    Task<GeotabSession> AuthenticateAsync(string userName, string password, string? database, string? server, CancellationToken ct);
     Task<T[]> GetAsync<T>(GeotabSession session, ReadOptions options, CancellationToken ct);
     Task<int> CountDeviceLinksAsync(GeotabSession session, CancellationToken ct);
 }
@@ -53,17 +53,27 @@ public sealed class GeotabReadClient(HttpClient http, TimeProvider clock, Reques
         : typeof(T) == typeof(DeviceLinkDto) ? "DeviceLink"
         : typeof(T) == typeof(DeviceStatusInfoDto) ? "DeviceStatusInfo"
         : throw new ArgumentException("Read type is not allowed.");
-
-    public async Task<GeotabSession> AuthenticateAsync(string userName, string password, string? database, CancellationToken ct)
+    // Wire fields must match the DTO contracts exactly: an omitted field deserializes as null.
+    private static readonly Dictionary<Type, string[]> SelectorFields = new()
     {
-        var result = await CallAsync<JsonElement>(new Uri("https://my.geotab.com/apiv1"), "Authenticate", "Authenticate",
+        [typeof(DeviceDto)] = ["id", "name"],
+        [typeof(AssetLinkDto)] = ["id", "linkType", "isActive"],
+        [typeof(AssetLinkDetailsDto)] = ["id", "assetLinkId", "device", "activeFrom", "activeTo"],
+        [typeof(DeviceLinkDto)] = ["id", "sourceDevice", "destinationDevice", "linkType", "fromDate", "toDate"],
+        [typeof(DeviceStatusInfoDto)] = ["device", "latitude", "longitude", "dateTime"],
+    };
+
+    public async Task<GeotabSession> AuthenticateAsync(string userName, string password, string? database, string? server, CancellationToken ct)
+    {
+        var host = ResolveHost(server);
+        var result = await CallAsync<JsonElement>(new Uri(new Uri(host), "/apiv1"), "Authenticate", "Authenticate",
             new { userName, password, database = string.IsNullOrWhiteSpace(database) ? null : database.Trim() }, true, ct);
         try
         {
             var credentials = result.GetProperty("credentials").Deserialize<GeotabCredentials>(WireJson.Options)!;
             var path = result.GetProperty("path").GetString();
-            var host = path == "ThisServer" ? "https://my.geotab.com" : "https://" + path?.TrimEnd('/');
-            var session = new GeotabSession { Host = host, Credentials = credentials };
+            var resolved = path == "ThisServer" ? host : "https://" + path?.TrimEnd('/');
+            var session = new GeotabSession { Host = resolved, Credentials = credentials };
             if (!session.IsValid) throw new GeotabException(ReadFailure.InvalidResponse);
             return session;
         }
@@ -71,12 +81,22 @@ public sealed class GeotabReadClient(HttpClient http, TimeProvider clock, Reques
         { throw new GeotabException(ReadFailure.InvalidResponse); }
     }
 
+    private static string ResolveHost(string? server)
+    {
+        var value = string.IsNullOrWhiteSpace(server) ? "my.geotab.com" : server.Trim();
+        if (!value.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            value = value.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ? value : "https://" + value;
+        if (!GeotabSession.HostIsAllowed(value)) throw new GeotabException(ReadFailure.InvalidResponse);
+        return value;
+    }
+
     public async Task<T[]> GetAsync<T>(GeotabSession session, ReadOptions options, CancellationToken ct)
     {
         if (!session.IsValid) throw new GeotabException(ReadFailure.Expired);
         if (options.ResultsLimit < 1) throw new ArgumentOutOfRangeException(nameof(options));
         var type = TypeName<T>();
-        var parameters = new Dictionary<string, object?> { ["credentials"] = session.Credentials, ["typeName"] = type, ["resultsLimit"] = options.ResultsLimit };
+        var parameters = new Dictionary<string, object?> { ["credentials"] = session.Credentials, ["typeName"] = type,
+            ["resultsLimit"] = options.ResultsLimit, ["propertySelector"] = new { fields = SelectorFields[typeof(T)], isIncluded = true } };
         if (options.Search is not null) parameters["search"] = options.Search;
         if (options.Sort is not null) parameters["sort"] = options.Sort;
         var records=await CallAsync<T[]>(session.ApiUri, "Get", type, parameters, false, ct);

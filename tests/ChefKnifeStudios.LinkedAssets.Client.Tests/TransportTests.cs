@@ -30,7 +30,26 @@ public class TransportTests
         Assert.False(corrupted.IsValid);
         using var http=new HttpClient(new ResponseHandler((_,_)=>Task.FromResult(ResponseHandler.Json("""{"result":{"path":"ThisServer","credentials":null}}"""))));
         using var client=new GeotabReadClient(http,TimeProvider.System);
-        var failure=await Assert.ThrowsAsync<GeotabException>(()=>client.AuthenticateAsync("fixture","test-only",null,default));
+        var failure=await Assert.ThrowsAsync<GeotabException>(()=>client.AuthenticateAsync("fixture","test-only",null,null,default));
+        Assert.Equal(ReadFailure.InvalidResponse,failure.Failure);
+    }
+    [Fact]
+    public async Task Authentication_targets_the_selected_server()
+    {
+        Uri? posted = null;
+        using var http=new HttpClient(new ResponseHandler((request,_)=>{posted=request.RequestUri;return Task.FromResult(ResponseHandler.Json("""{"result":{"path":"ThisServer","credentials":{"database":"g560","userName":"fixture","sessionId":"test-only"}}}"""));}));
+        using var client=new GeotabReadClient(http,TimeProvider.System);
+        var session=await client.AuthenticateAsync("fixture","test-only","g560","alpha.geotab.com",default);
+        Assert.Equal("https://alpha.geotab.com/apiv1",posted!.ToString());
+        Assert.Equal("https://alpha.geotab.com",session.Host);
+        Assert.True(session.IsValid);
+    }
+    [Fact]
+    public async Task Disallowed_authentication_servers_are_rejected_before_any_request()
+    {
+        using var http=new HttpClient(new ResponseHandler((_,_)=>throw new InvalidOperationException("No request expected.")));
+        using var client=new GeotabReadClient(http,TimeProvider.System);
+        var failure=await Assert.ThrowsAsync<GeotabException>(()=>client.AuthenticateAsync("fixture","test-only",null,"https://evil.test",default));
         Assert.Equal(ReadFailure.InvalidResponse,failure.Failure);
     }
     internal static GeotabSession Session => new() { Credentials = new() { Database = "test-only", UserName = "fixture", SessionId = "not-live" } };
@@ -47,6 +66,18 @@ public class TransportTests
         Assert.Equal(expected, ex.Failure);
         Assert.DoesNotContain("private", ex.Message);
         Assert.Equal(1, requests);
+    }
+    [Fact]
+    public async Task Get_requests_limit_responses_to_the_fields_each_type_consumes()
+    {
+        string? body = null;
+        using var http=new HttpClient(new ResponseHandler(async (request,_)=>{body=await request.Content!.ReadAsStringAsync();return ResponseHandler.Json("""{"result":[]}""");}));
+        using var client=new GeotabReadClient(http,TimeProvider.System);
+        await client.GetAsync<DeviceDto>(Session,new(),default);
+        using var json=JsonDocument.Parse(body!);
+        var selector=json.RootElement.GetProperty("params").GetProperty("propertySelector");
+        Assert.True(selector.GetProperty("isIncluded").GetBoolean());
+        Assert.Equal(["id","name"],selector.GetProperty("fields").EnumerateArray().Select(f=>f.GetString()));
     }
     [Fact]
     public async Task Transient_failures_retry_only_twice()

@@ -18,12 +18,12 @@ public sealed class GeotabSessionService(IGeotabReadClient client, ISessionStore
         Current = session?.IsValid == true ? session : null;
         if (Current is null) await ClearStoredAsync();
     }
-    public async Task SignInAsync(string userName, string password, string? database, CancellationToken ct)
+    public async Task SignInAsync(string userName, string password, string? database, string? server, CancellationToken ct)
     {
         var generation = ++_generation;
         Current = null;
         await ClearStoredAsync();
-        var session = await client.AuthenticateAsync(userName.Trim(), password, database, ct);
+        var session = await client.AuthenticateAsync(userName.Trim(), password, database, server, ct);
         if (generation != _generation || ct.IsCancellationRequested) return;
         Current = session;
         try { await store.WriteAsync(session); } catch { }

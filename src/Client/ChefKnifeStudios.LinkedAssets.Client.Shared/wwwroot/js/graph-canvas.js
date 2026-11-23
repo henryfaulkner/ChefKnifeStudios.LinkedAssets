@@ -116,7 +116,7 @@ export function replaceSnapshot(id,revision,graphs,retainedPositions) {
     return capture(id);
 }
 function pack(s,keys,top=220){
-    const cy=s.cy;const width=Math.max(320,s.element.clientWidth);
+    const cy=s.cy;
     // Geometry reads must precede the mutation batch: compound bounds/label caches
     // are deliberately deferred by Cytoscape while a batch is open.
     const measured=keys.map(key=>{
@@ -135,11 +135,13 @@ function pack(s,keys,top=220){
     if(!measured.length)return[];
     const cellWidth=Math.max(...measured.map(g=>g.box.w));
     const cellHeight=Math.max(...measured.map(g=>g.box.h));
-    const columns=Math.max(1,Math.min(measured.length,Math.floor((width-96+80)/(cellWidth+80))));
+    // Fixed four rows: columns grow with the visible set (N = ceil(count/4)); the
+    // canvas pans/zooms horizontally instead of re-wrapping by viewport width.
+    // Sorted order fills each column top-to-bottom before continuing to the right.
     const moved=[],movedKeys=[];
     cy.batch(()=>{
         measured.forEach(({key,children,positions,box},index)=>{
-            const x=48+(index%columns)*(cellWidth+80),y=top+Math.floor(index/columns)*(cellHeight+80);
+            const x=48+Math.floor(index/4)*(cellWidth+80),y=top+(index%4)*(cellHeight+80);
             const dx=x-box.x1,dy=y-box.y1;
             if(Math.abs(dx)<1e-8&&Math.abs(dy)<1e-8)return;
             children.silentPositions((n,i)=>({x:positions[i].x+dx,y:positions[i].y+dy}));

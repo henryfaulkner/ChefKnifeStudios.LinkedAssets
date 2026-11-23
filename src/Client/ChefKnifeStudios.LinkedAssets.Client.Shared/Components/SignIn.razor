@@ -10,6 +10,11 @@
         <label for="database">Database (optional)</label>
         <input id="database" autocomplete="off" @bind="_database" aria-describedby="database-help" />
         <p id="database-help" class="muted">Leave blank if your account has one database.</p>
+        <label for="server">Server</label>
+        <select id="server" @bind="_server">
+            <option value="https://my.geotab.com">my.geotab.com</option>
+            <option value="https://alpha.geotab.com">alpha.geotab.com</option>
+        </select>
         @if (_error is not null) { <p role="alert">@_error</p> }
         <button class="action" type="submit" disabled="@_busy">@(_busy ? "Signing in…" : "Sign in")</button>
     </form>
@@ -18,15 +23,16 @@
     [Parameter] public EventCallback Authenticated { get; set; }
     [Parameter] public string? Notice {get;set;}
     private string _user = "", _password = "", _database = "";
+    private string _server = "https://my.geotab.com";
     private string? _error;
     private bool _busy;
     private async Task SubmitAsync()
     {
         if (_busy) return;
         _busy = true; _error = null;
-        try { await Session.SignInAsync(_user,_password,_database,default); await Authenticated.InvokeAsync(); }
+        try { await Session.SignInAsync(_user,_password,_database,_server,default); await Authenticated.InvokeAsync(); }
         catch (GeotabException ex)
-        { _error = ex.Failure == ReadFailure.Authentication ? "Sign-in failed. Check your username, password and database. Enter a database if your account requires one." : "Geotab sign-in is unavailable. Please try again."; }
+        { _error = ex.Failure == ReadFailure.Authentication ? "Sign-in failed. Check your username, password, database and server. Enter a database if your account requires one." : "Geotab sign-in is unavailable. Please try again."; }
         finally { _password = ""; _busy = false; }
     }
 }

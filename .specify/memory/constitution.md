@@ -1,14 +1,4 @@
-﻿<!--
-Sync Impact Report (temporary review material; remove before committing)
-Version change: 1.1.1 -> 1.2.0 (require automatic filter reflow and a left-to-right grid)
-Modified principles: none.
-Modified sections: Product Behavior (key toggles, result arrangement and sorting).
-Added sections: none.
-Removed sections: none.
-Follow-up TODOs: none.
-Dependent templates and commands: unchanged; consume this constitution at runtime.
--->
-# Linked Assets Constitution
+﻿# Linked Assets Constitution
 
 ## Core Principles
 
@@ -21,6 +11,16 @@ The application MUST execute entirely in the browser, using client-side Blazor, 
 an application backend, proxy, server-rendered runtime, or server-side data store.
 All application domain data MUST be sourced from Geotab's public APIs, including device
 records and names, reported positions, report times, linked assets, and link metadata.
+Every source read MUST use Geotab's property selector to limit each response to the
+fields the application's read contracts actually consume; unconsumed members, such as
+embedded asset-link detail history inside AssetLink records, MUST NOT be requested.
+The selected fields MUST match the application's deserialization contracts exactly so
+required data is never silently omitted, and any change to a read contract MUST update
+its property selection in the same change.
+(Amended 2026-11-23: full-record reads caused avoidable transfer and browser-side
+parsing load; measured on alpha, property selection reduced a 20-record Device page
+from 73,361 to 848 bytes. Affected artifacts: GeotabReadClient selector map,
+TransportTests, implementation-design section 11.2.)
 Local presentation state, such as graph layout, filters, selection, and theme preferences,
 MUST remain distinct from Geotab source data. Geotab authentication UI MUST expose only
 the inputs and steps required to establish or restore access.
@@ -188,15 +188,22 @@ when devices participate in several relationships.
   labels, connecting line segments, and group outlines. Hidden links MUST leave no orphan
   lines on the canvas. Restoring a link's eligibility MUST restore its complete graph.
 - **Result arrangement:** Device-name search and link-type filter changes MUST automatically
-  rearrange the resulting visible links into a grid, filling each row from left to right
-  before continuing on the next row. Clearing search or restoring link types MUST reflow
-  the complete resulting set without gaps reserved for hidden links. Grid cells MUST align
-  across rows and provide enough space for each graph and its device-name labels.
+  rearrange the resulting visible links into a grid of at most four rows, with columns
+  growing rightward as needed (N = ceil(count/4)). Sorted order MUST fill each column
+  top-to-bottom before continuing to the next column on the right. Clearing search or
+  restoring link types MUST reflow the complete resulting set without gaps reserved for
+  hidden links. Grid cells MUST align across rows and columns and provide enough space for
+  each graph and its device-name labels.
   Rearrangement MUST preserve each link's internal node positions relative to one another;
   hidden links MUST retain their local coordinates until they become visible again.
   Automatic reflow MUST use the selected sort mode, defaulting to Most Recent.
-- **Sorting:** The page MUST expose buttons that arrange visible links logically from left
-  to right in the same grid. Required modes MUST include Most Recent and Link Type.
+  (Amended 2026-11-23: the owner replaced row-major left-to-right filling with the fixed
+  four-row, column-major arrangement; rationale — reading order should follow a column
+  then move right. Affected artifacts: implementation-design sections 7/13, V13/V14,
+  graph-canvas.js pack, tests/browser/layout.spec.js.)
+- **Sorting:** The page MUST expose buttons that arrange visible links logically in the
+  same grid, ordered down each column and then across columns to the right. Required modes
+  MUST include Most Recent and Link Type.
   Most Recent MUST order links by their latest addition, newest first; it MUST NOT substitute
   device report recency.
   Planning MUST define the public-API evidence for addition recency, behavior when that
@@ -250,4 +257,4 @@ Every specification, implementation plan, and code review MUST assess compliance
 the applicable rules. Departures from a MUST rule require an approved constitutional
 amendment; implementation convenience alone is not an exception.
 
-**Version**: 1.2.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-22
+**Version**: 1.3.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-23
