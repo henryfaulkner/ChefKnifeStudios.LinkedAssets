@@ -1,7 +1,7 @@
 .sign-out-fab-container {
     position: absolute;
     right: 74px;
-    bottom: calc(24px + var(--support-footer-height));
+    bottom: 24px;
     z-index: 20;
 }
 

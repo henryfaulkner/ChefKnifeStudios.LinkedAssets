@@ -1,7 +1,7 @@
 .darkmode-fab-container {
     position: fixed;
     right: 24px;
-    bottom: calc(24px + var(--support-footer-height));
+    bottom: 24px;
     z-index: 20;
 }
 

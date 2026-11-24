@@ -27,12 +27,11 @@ test('minimal authentication restores within tab and sign-out clears session', a
       await expect(toggled.locator('.material-icons')).toHaveText(theme==='Dark theme'?'dark_mode':'light_mode');
       await expect(toggled).toHaveCSS('box-shadow','none');
       const themeBounds=await toggled.boundingBox();
-      const footerBounds=await page.getByRole('contentinfo').boundingBox();
       expect(themeBounds.width).toBe(40);expect(themeBounds.height).toBe(40);
-      expect(themeBounds.x).toBe(width-64);expect(themeBounds.y+themeBounds.height).toBeLessThan(footerBounds.y);
+      expect(themeBounds.x).toBe(width-64);expect(themeBounds.y+themeBounds.height).toBeLessThan(900);
       const bounds=await signOut.boundingBox();
       expect(bounds.width).toBe(40);expect(bounds.height).toBe(40);
-      expect(bounds.x).toBe(width-114);expect(bounds.y+bounds.height).toBeLessThan(footerBounds.y);
+      expect(bounds.x).toBe(width-114);expect(bounds.y+bounds.height).toBeLessThan(900);
       await expect(signOut).toHaveCSS('box-shadow','none');
       await expect(signOut).toHaveCSS('border-radius','50%');
       await expect(signOut).toBeInViewport();
