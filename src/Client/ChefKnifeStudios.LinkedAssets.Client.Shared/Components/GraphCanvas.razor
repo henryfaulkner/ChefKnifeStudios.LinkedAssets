@@ -38,7 +38,9 @@
             var links=Links;
             var visibleKeys=VisibleKeys.ToArray();
             var snapshotChanged=!_lastLinks.Equals(links);
-            var visibilityChanged=!_lastVisible.SequenceEqual(visibleKeys);
+            // A refresh can reorder the sorted keys while the visible set is unchanged;
+            // only a set change reflows the grid so moved nodes survive refreshes.
+            var visibilityChanged=!_lastVisible.ToHashSet().SetEquals(visibleKeys);
             if(snapshotChanged||visibilityChanged)
             {
                 if(!_lastLinks.IsDefault)await CommitAsync(await _interop.CaptureAsync());
