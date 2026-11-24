@@ -4,7 +4,7 @@ async function login(page){await page.goto('/?agent=true');await page.getByLabel
 async function openBrowse(page){await page.getByText('Browse links',{exact:true}).click();}
 test('AssetLink blades show recorded addition times even when full history is unverified',async({page})=>{
   await interceptGeotab(page);await login(page);await openBrowse(page);
-  for(const [type,date] of [['Automatic','2026-11-20 11:00:00Z'],['Cold Chain','2026-11-01 00:00:00Z']]) {
+  for(const [type,date] of [['Automatic','2026-11-01 00:00:00Z'],['Cold Chain','2026-11-01 00:00:00Z']]) {
     await page.getByRole('button',{name:new RegExp(`^${type}:`)}).click();
     const details=page.getByRole('region',{name:`${type} link`});
     await expect(details.getByText('Latest recorded addition',{exact:true})).toBeVisible();

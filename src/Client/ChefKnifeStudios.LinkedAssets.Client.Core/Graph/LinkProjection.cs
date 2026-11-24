@@ -31,8 +31,8 @@ public static class LinkProjection
             if (members.IsEmpty) { issues.Add($"{kind}:{id}: no known active member."); return; }
             if (members.Length == 1) local.Add("Single active member; sibling membership is unavailable or inactive.");
             if (members.Any(m => string.IsNullOrWhiteSpace(m.SourceName))) local.Add("Some device names are unavailable.");
-            var recorded = all.Where(p => p.Start is {Year:>1} start && start <= now).Max(p => p.Start);
-            var addition = coverage == Coverage.Complete && !all.Any(p => p.Start is null or {Year:1}) ? recorded : null;
+            var recorded = all.Where(p => Active(p.Start,p.End,now) && !string.IsNullOrEmpty(p.DeviceId)).Select(p => p.Start).DefaultIfEmpty().Max();
+            var addition = coverage == Coverage.Complete ? recorded : null;
             links.Add(new(kind+":"+id,kind,id,rawType,type,all,members,addition,coverage,local.ToImmutable())
                 { LatestRecordedAddition = recorded });
         }
@@ -64,9 +64,16 @@ public static class LinkProjection
         return links.Where(link => enabled.Contains(link.Type) && (text.Length == 0 || link.Members.Any(m=>
             m.SourceName?.Contains(text,StringComparison.OrdinalIgnoreCase) == true)));
     }
-    public static IOrderedEnumerable<LinkRecord> Sort(IEnumerable<LinkRecord> links, SortMode mode) => mode == SortMode.MostRecent
-        ? links.OrderBy(x=>x.LatestAddition is null).ThenByDescending(x=>x.LatestAddition).ThenBy(x=>x.Type)
-            .ThenBy(x=>x.SourceKind,StringComparer.Ordinal).ThenBy(x=>x.SourceId,StringComparer.Ordinal)
-        : links.OrderBy(x=>x.Type).ThenBy(x=>x.LatestAddition is null).ThenByDescending(x=>x.LatestAddition)
-            .ThenBy(x=>x.SourceKind,StringComparer.Ordinal).ThenBy(x=>x.SourceId,StringComparer.Ordinal);
+    // Constitution v1.4.0: evidence comes from active member periods; verified evidence is
+    // preferred, recorded evidence from unverified or incomplete history orders the link,
+    // and only absent valid evidence sorts as unknown.
+    public static IOrderedEnumerable<LinkRecord> Sort(IEnumerable<LinkRecord> links, SortMode mode)
+    {
+        static DateTimeOffset? Evidence(LinkRecord link) => link.LatestAddition ?? link.LatestRecordedAddition;
+        return mode == SortMode.MostRecent
+            ? links.OrderBy(x=>Evidence(x) is null).ThenByDescending(Evidence).ThenBy(x=>x.Type)
+                .ThenBy(x=>x.SourceKind,StringComparer.Ordinal).ThenBy(x=>x.SourceId,StringComparer.Ordinal)
+            : links.OrderBy(x=>x.Type).ThenBy(x=>Evidence(x) is null).ThenByDescending(Evidence)
+                .ThenBy(x=>x.SourceKind,StringComparer.Ordinal).ThenBy(x=>x.SourceId,StringComparer.Ordinal);
+    }
 }

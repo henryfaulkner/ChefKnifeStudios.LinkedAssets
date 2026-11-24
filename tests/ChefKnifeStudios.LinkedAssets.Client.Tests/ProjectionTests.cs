@@ -24,18 +24,20 @@ public class ProjectionTests
         Assert.Equal(2,links.Count(l=>l.Members.Any(m=>m.DeviceId=="d1")));
     }
     [Fact]
-    public void Latest_addition_includes_departed_members_and_incomplete_history_stays_unknown()
+    public void Addition_evidence_uses_active_members_and_unverified_history_orders_by_recorded_evidence()
     {
         var links=Fixture().Links;
-        Assert.Equal(DateTimeOffset.Parse("2026-11-20T11:00:00Z"),links.Single(x=>x.Type==LinkType.Automatic).LatestAddition);
-        Assert.Equal(LinkType.Automatic,LinkProjection.Sort(links,SortMode.MostRecent).First().Type);
+        var order=new[]{"DeviceLink:same","AssetLink:same","AssetLink:cold"};
+        Assert.Equal(DateTimeOffset.Parse("2026-11-01T00:00:00Z"),links.Single(x=>x.Type==LinkType.Automatic).LatestAddition);
+        Assert.Equal(order,LinkProjection.Sort(links,SortMode.MostRecent).Select(l=>l.Key));
         foreach (var coverage in new[] {Coverage.Incomplete,Coverage.Unverified})
         {
-            var automatic = Fixture(coverage).Links.Single(x=>x.Type==LinkType.Automatic);
+            var unverified=Fixture(coverage).Links;
+            var automatic=unverified.Single(x=>x.Type==LinkType.Automatic);
             Assert.Null(automatic.LatestAddition);
-            Assert.Equal(DateTimeOffset.Parse("2026-11-20T11:00:00Z"),automatic.LatestRecordedAddition);
+            Assert.Equal(DateTimeOffset.Parse("2026-11-01T00:00:00Z"),automatic.LatestRecordedAddition);
+            Assert.Equal(order,LinkProjection.Sort(unverified,SortMode.MostRecent).Select(l=>l.Key));
         }
-        Assert.Equal(LinkType.Manual,LinkProjection.Sort(Fixture(Coverage.Unverified).Links,SortMode.MostRecent).First().Type);
     }
     [Theory]
     [InlineData("",3)] [InlineData("   ",3)] [InlineData("TRACTOR",2)] [InlineData(" bravo ",2)] [InlineData("absent",0)]
@@ -63,15 +65,16 @@ public class ProjectionTests
         Assert.Empty(projection.Links); Assert.NotEmpty(projection.Issues);
     }
     [Fact]
-    public void Known_recency_and_type_ties_are_deterministic_with_unknowns_last()
+    public void Known_recency_type_ties_and_recorded_fallbacks_are_deterministic_with_unknowns_last()
     {
         var sample=Fixture().Links[0];
-        var a=sample with{Key="AssetLink:a",SourceId="a",Type=LinkType.Automatic,LatestAddition=Now.AddDays(-1)};
-        var b=sample with{Key="AssetLink:b",SourceId="b",Type=LinkType.Automatic,LatestAddition=Now.AddDays(-1)};
-        var c=sample with{Key="DeviceLink:c",SourceKind="DeviceLink",SourceId="c",Type=LinkType.Manual,LatestAddition=Now};
-        var unknown=sample with{Key="AssetLink:u",SourceId="u",LatestAddition=null};
-        Assert.Equal(new[]{c.Key,a.Key,b.Key,unknown.Key},LinkProjection.Sort(new[]{unknown,b,c,a},SortMode.MostRecent).Select(l=>l.Key));
-        Assert.Equal(new[]{a.Key,b.Key,unknown.Key,c.Key},LinkProjection.Sort(new[]{unknown,b,c,a},SortMode.LinkType).Select(l=>l.Key));
+        var a=sample with{Key="AssetLink:a",SourceId="a",Type=LinkType.Automatic,LatestAddition=Now.AddDays(-1),LatestRecordedAddition=null};
+        var b=sample with{Key="AssetLink:b",SourceId="b",Type=LinkType.Automatic,LatestAddition=Now.AddDays(-1),LatestRecordedAddition=null};
+        var c=sample with{Key="DeviceLink:c",SourceKind="DeviceLink",SourceId="c",Type=LinkType.Manual,LatestAddition=Now,LatestRecordedAddition=null};
+        var recorded=sample with{Key="AssetLink:r",SourceId="r",LatestAddition=null,LatestRecordedAddition=Now.AddDays(-2)};
+        var unknown=sample with{Key="AssetLink:u",SourceId="u",LatestAddition=null,LatestRecordedAddition=null};
+        Assert.Equal(new[]{c.Key,a.Key,b.Key,recorded.Key,unknown.Key},LinkProjection.Sort(new[]{unknown,recorded,b,c,a},SortMode.MostRecent).Select(l=>l.Key));
+        Assert.Equal(new[]{a.Key,b.Key,recorded.Key,unknown.Key,c.Key},LinkProjection.Sort(new[]{unknown,recorded,b,c,a},SortMode.LinkType).Select(l=>l.Key));
     }
     [Fact]
     public void Future_additions_missing_endpoints_and_unsupported_types_are_not_invented()

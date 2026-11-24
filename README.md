@@ -28,7 +28,7 @@ Restores disable the SDK's implicit local package source so the lock file uses c
 
 There is no production demo mode. A fresh checkout displays sign-in until actual Geotab access is supplied. Request a public demo database using the design's [acquisition guide](docs/implementation-design.md#11-test-data-acquisition-without-employee-credentials), record its actual expiry, and arrange an API user with read access to Device, AssetLink, AssetLinkDetails, DeviceLink and DeviceStatusInfo. Do not commit credentials. Sample vehicles alone do not guarantee all three link categories exist.
 
-AssetLink member history remains explicitly unverified until the target server's limits and complete history are proven under LA-005/LA-037. Those links show “Addition time unavailable” and sort after known addition dates. Missing DeviceLink types are excluded until the target's default encoding is verified. Refresh is manual; known membership boundaries also trigger reevaluation. A failed refresh retains the prior snapshot and labels it stale.
+AssetLink member history remains explicitly unverified until the target server's limits and complete history are proven under LA-005/LA-037. Those links show “Latest recorded addition” with a history caveat and Most Recent orders them by that recorded evidence (active member periods only; departed members do not date a link) rather than pushing them after known dates. Missing DeviceLink types are excluded until the target's default encoding is verified. Refresh is manual; known membership boundaries also trigger reevaluation. A failed refresh retains the prior snapshot and labels it stale.
 
 ## Explore locally with mock data
 

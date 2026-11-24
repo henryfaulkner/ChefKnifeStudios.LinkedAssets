@@ -206,9 +206,20 @@ when devices participate in several relationships.
   MUST include Most Recent and Link Type.
   Most Recent MUST order links by their latest addition, newest first; it MUST NOT substitute
   device report recency.
+  Addition evidence MUST come from the starts of currently-active member periods; a departed
+  member's earlier join MUST NOT date the link. Most Recent MUST order links by the best
+  available addition evidence from the source reads, including when full history is
+  unverified or incomplete; only absent valid evidence sorts as unknown. The verified/
+  recorded distinction MUST remain explicit in the details display.
   Planning MUST define the public-API evidence for addition recency, behavior when that
   evidence is unavailable, the link-type ordering, and deterministic tie handling.
   Additional sort modes MUST be backed by a current requirement.
+  (Amended 2026-11-24: the owner replaced verified-only recency ordering — with AssetLink
+  history unverified, every Automatic and Cold Chain link sorted as unknown and fell to
+  tie-breakers. Evidence now comes from active member periods regardless of history
+  coverage, and departed members no longer date a link. Affected artifacts:
+  implementation-design sections 7.3 and 12, V14, LinkProjection, ProjectionTests,
+  tests/browser/integration.spec.js.)
 
 ## Development and Deployment Workflow
 
@@ -257,4 +268,4 @@ Every specification, implementation plan, and code review MUST assess compliance
 the applicable rules. Departures from a MUST rule require an approved constitutional
 amendment; implementation convenience alone is not an exception.
 
-**Version**: 1.3.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-23
+**Version**: 1.4.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-24
